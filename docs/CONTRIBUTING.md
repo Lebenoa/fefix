@@ -8,7 +8,7 @@ Some suggestions to get started:
 - Help with packaging on various distributions needed!
 - To use print debugging to the [fefix log file][log-file], you must:
   * Print using `log::info!`, `warn!`, or `error!`. (`log::info!("helix!")`)
-  * Pass the appropriate verbosity level option for the desired log level. (`hx -v <file>` for info, more `v`s for higher verbosity)
+  * Pass the appropriate verbosity level option for the desired log level. (`fx -v <file>` for info, more `v`s for higher verbosity)
   * Want to display the logs in a separate file instead of using the `:log-open` command in your compiled fefix editor? Start your debug version with `cargo run -- --log foo.log` and in a new terminal use `tail -f foo.log`
 - Instead of running a release version of fefix, while developing you may want to run in debug mode with `cargo run` which is way faster to compile
 - Looking for even faster compile times? Give [mold](https://github.com/rui314/mold) a try
@@ -52,8 +52,8 @@ Run `cargo test --workspace` to run unit tests and documentation tests in all pa
 Integration tests for helix-term can be run with `cargo integration-test`. Code
 contributors are strongly encouraged to write integration tests for their code.
 Existing tests can be used as examples. Helpers can be found in
-[helpers.rs][helpers.rs]. The log level can be set with the `HELIX_LOG_LEVEL`
-environment variable, e.g. `HELIX_LOG_LEVEL=debug cargo integration-test`.
+[helpers.rs][helpers.rs]. The log level can be set with the `FEFIX_LOG_LEVEL`
+environment variable, e.g. `FEFIX_LOG_LEVEL=debug cargo integration-test`.
 
 Contributors using MacOS might encounter `Too many open files (os error 24)`
 failures while running integration tests. This can be resolved by increasing

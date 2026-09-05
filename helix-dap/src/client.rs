@@ -370,7 +370,7 @@ impl Client {
 
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
         let args = requests::InitializeArguments {
-            client_id: Some("hx".to_owned()),
+            client_id: Some("fx".to_owned()),
             client_name: Some("helix".to_owned()),
             adapter_id,
             locale: Some("en-us".to_owned()),

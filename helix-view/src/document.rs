@@ -162,7 +162,7 @@ pub struct Document {
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
     /// Lazily-computed workspace root for this document (the ancestor that contains a `.git` /
-    /// `.svn` / `.jj` / `.helix`). Avoids per-call `find_workspace_in` ancestor walks for hot
+    /// `.svn` / `.jj` / `.fefix`). Avoids per-call `find_workspace_in` ancestor walks for hot
     /// consumers like the statusline trust indicator, LSP launch, and DAP launch. Taken in
     /// `set_path` so save-as recomputes.
     workspace_root: OnceCell<PathBuf>,
@@ -2117,7 +2117,7 @@ impl Document {
     }
 
     /// The workspace root for this document — the nearest ancestor that contains a `.git`, `.svn`,
-    /// `.jj`, or `.helix`. Falls back to the current working directory's workspace when the
+    /// `.jj`, or `.fefix`. Falls back to the current working directory's workspace when the
     /// document has no path (scratch buffers). Lazily memoised on first call.
     pub fn workspace_root(&self) -> &Path {
         self.workspace_root

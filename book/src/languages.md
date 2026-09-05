@@ -26,7 +26,7 @@ There are three possible locations for a `languages.toml` file:
    auto-format = false
    ```
 
-3. In a `.helix` folder in your project. Language configuration may also be
+3. In a `.fefix` folder in your project. Language configuration may also be
    overridden local to a project by creating a `languages.toml` file in a
    `.helix` folder. Its settings will be merged with the language configuration
    in the configuration directory and the built-in configuration.
@@ -72,7 +72,7 @@ These configuration keys are available:
 | `rulers`              | Overrides the `editor.rulers` config key for the language. |
 | `path-completion`     | Overrides the `editor.path-completion` config key for the language. |
 | `word-completion`     | Overrides the [`editor.word-completion`](./editor.md#editorword-completion-section) configuration for the language. |
-| `workspace-lsp-roots`     | Directories (relative to the workspace root) that stop the upward root search early. Meant for project-specific hard overrides in a local `.helix/config.toml`; |
+| `workspace-lsp-roots`     | Directories (relative to the workspace root) that stop the upward root search early. Meant for project-specific hard overrides in a local `.fefix/config.toml`; |
 | `persistent-diagnostic-sources` | An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. fefix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.
 | `rainbow-brackets` | Overrides the `editor.rainbow-brackets` config key for the language |
 | `code-actions-on-save`    | List of LSP code actions to be run in order on save, for example `["source.organizeImports"]` |
@@ -83,7 +83,7 @@ This is the model fefix uses:
 
 - The **workspace root** is found once by walking upward from the current
   working directory and picking the first directory that contains `.git`, `.svn`,
-  `.jj`, or `.helix`. If none are found, the current working directory is the
+  `.jj`, or `.fefix`. If none are found, the current working directory is the
   workspace root.
 - Root markers (`roots`) are used only for LSP root selection and are found by
   starting at the **file**, not the folder fefix was opened in.
@@ -94,7 +94,7 @@ This is the model fefix uses:
   specific. For these situations, use `workspace-lsp-roots` to stop the search
   early in a particular directory.
 - `workspace-lsp-roots` is meant to be set in the **project-specific** config:
-  `$PROJECT/.helix/config.toml`.
+  `$PROJECT/.fefix/config.toml`.
 
 Interaction with `required-root-patterns` (a language_server configuration key):
 
@@ -291,12 +291,12 @@ git repository:
 | ---    | -----------                                               |
 | `git`  | A git remote URL from which the grammar should be cloned  |
 | `rev`  | The revision (commit hash or tag) which should be fetched |
-| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `hx --grammar build` to the correct path for compilation. When omitted, the root of repository is used |
+| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `fx --grammar build` to the correct path for compilation. When omitted, the root of repository is used |
 
 ### Choosing grammars
 
 You may use a top-level `use-grammars` key to control which grammars are
-fetched and built when using `hx --grammar fetch` and `hx --grammar build`.
+fetched and built when using `fx --grammar fetch` and `fx --grammar build`.
 
 ```toml
 # Note: this key must come **before** the [[language]] and [[grammar]] sections

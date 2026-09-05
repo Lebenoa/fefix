@@ -88,7 +88,7 @@ fn ensure_git_is_available() -> Result<()> {
     Ok(())
 }
 
-/// Print a notice if the current workspace has a `.helix/languages.toml` that we *would* have
+/// Print a notice if the current workspace has a `.fefix/languages.toml` that we *would* have
 /// merged but the workspace-trust gate is keeping us from.
 fn warn_if_workspace_languages_skipped(trust: &crate::workspace_trust::WorkspaceTrust) {
     let workspace_languages = crate::workspace_lang_config_file();
@@ -250,7 +250,7 @@ pub fn build_grammars(target: Option<String>, strict: bool, install_dir: &Path) 
 fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
     // `--grammar fetch/build` clones grammar sources from URLs in `languages.toml` and compiles
     // them into `.so` files helix later loads at runtime. If we let workspace
-    // `.helix/languages.toml` in through `fully_trusted`, a malicious workspace could inject a
+    // `.fefix/languages.toml` in through `fully_trusted`, a malicious workspace could inject a
     // grammar with an attacker-controlled git source — running grammar build in that
     // directory would clone and compile attacker code
     let trust = crate::workspace_trust::WorkspaceTrust::new(Default::default());
@@ -512,14 +512,14 @@ fn build_grammar(
 
     let grammar_dir_entries = grammar_dir.read_dir().with_context(|| {
         format!(
-            "Failed to read directory {:?}. Did you use 'hx --grammar fetch'?",
+            "Failed to read directory {:?}. Did you use 'fx --grammar fetch'?",
             grammar_dir
         )
     })?;
 
     if grammar_dir_entries.count() == 0 {
         return Err(anyhow!(
-            "Directory {:?} is empty. Did you use 'hx --grammar fetch'?",
+            "Directory {:?} is empty. Did you use 'fx --grammar fetch'?",
             grammar_dir
         ));
     };
@@ -558,7 +558,7 @@ fn build_tree_sitter_library(
     };
     let parser_lib_path = install_dir.join("grammars");
     // Create the directory if it does not exist yet (e.g. running
-    // `hx --grammar build` before `hx --grammar fetch`, or for local
+    // `fx --grammar build` before `fx --grammar fetch`, or for local
     // grammars) so the grammars are installed automatically.
     fs::create_dir_all(&parser_lib_path)
         .with_context(|| format!("Could not create grammar directory {:?}", parser_lib_path))?;

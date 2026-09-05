@@ -7,7 +7,7 @@ programs you install yourself: the [language support](./lang-support.md) page
 lists which languages ship with a server configured, and the
 [language server configuration wiki][wiki] has per-server installation notes.
 
-Run `hx --health <language>` to check whether fefix found the configured server
+Run `fx --health <language>` to check whether fefix found the configured server
 for a language. After changing a server's configuration, `:lsp-restart` reloads
 it and `:lsp-stop` stops it; `:lsp-workspace-command` runs a command the server
 exposes for the workspace.

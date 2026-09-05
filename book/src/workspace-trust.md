@@ -4,14 +4,14 @@ fefix has several features that can execute arbitrary code:
 
 - Language servers (LSP)
 - Debug adapters (DAP)
-- Local workspace configuration (`.helix/config.toml`, `.helix/languages.toml`)
+- Local workspace configuration (`.fefix/config.toml`, `.fefix/languages.toml`)
 - Git integration (filters and other commands in a repository's `.git/config`)
 
 To protect against malicious projects (a checked-out PR, a freshly cloned
 repository, etc.) fefix gates these behind explicit per-workspace trust.
 By default language servers start automatically (their binaries come from
 `$PATH`, not from the workspace) and debug adapters may be launched, but
-loading `.helix/config.toml` or `.helix/languages.toml` and trusting a
+loading `.fefix/config.toml` or `.fefix/languages.toml` and trusting a
 repository's `.git/config` requires opting in. Note that debug adapters
 are never started automatically — you launch them yourself — but the same
 trust level still gates whether they may run. The model is intentionally
@@ -46,18 +46,18 @@ you open a file in that workspace, you're back to the untrusted hint.
 ## Detecting changes after trust was granted
 
 When you trust a workspace, fefix records a hash of every file under
-`.helix/`. If those files change afterwards (a malicious checkout, an
+`.fefix/`. If those files change afterwards (a malicious checkout, an
 inadvertent rebase, etc.) fefix detects the mismatch on the next open and
 reports the workspace as *stale*:
 
 ```
-Workspace `.helix/` config changed since `:workspace-trust`. Local config
+Workspace `.fefix/` config changed since `:workspace-trust`. Local config
 not loaded. Run `:workspace-trust` to re-allow.
 ```
 
 In the stale state, language servers continue to run (they use the
 globally-configured binaries on `$PATH`, which are unchanged), but
-`.helix/config.toml` and `.helix/languages.toml` are not loaded. Run
+`.fefix/config.toml` and `.fefix/languages.toml` are not loaded. Run
 `:workspace-trust` again to re-pin the new hash.
 
 ## Storage
@@ -101,7 +101,7 @@ prompt = true
 Language servers start automatically in every workspace — their binaries
 come from `$PATH` and are not workspace-controlled — and debug adapters
 you launch are allowed to run. The modal only appears when opening a file
-in a workspace whose `.helix/config.toml` or `.helix/languages.toml` would
+in a workspace whose `.fefix/config.toml` or `.fefix/languages.toml` would
 unlock something. Trust everything else with one keystroke per workspace,
 deny with another.
 
@@ -123,7 +123,7 @@ deliberate action than dismiss a dialog.
 > [!WARNING]
 > `level = "insecure"` is highly discouraged. It implicitly trusts every
 > workspace you open, which defeats the protection entirely: a
-> checked-out PR with a malicious `.helix/config.toml` would get its
+> checked-out PR with a malicious `.fefix/config.toml` would get its
 > configuration loaded and any language server it defines launched, with
 > no prompt and no indicator. Only set this if you accept full
 > responsibility for what's in every project directory you `cd` into.
@@ -148,7 +148,7 @@ are expanded.
 
 > [!WARNING]
 > This is weaker than an explicit grant and is discouraged. It skips the
-> `.helix/` change detection entirely (a malicious checkout under a
+> `.fefix/` change detection entirely (a malicious checkout under a
 > matched directory is never flagged as stale), and it trusts *any*
 > repository that later lands under a matching path — including one you
 > clone into `~/src/github.com/me/` from an untrusted source. Prefer

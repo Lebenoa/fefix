@@ -2666,7 +2666,7 @@ fn global_search(cx: &mut Context) {
                     filter_picker_entry(entry, &absolute_root, dedup_symlinks)
                 })
                 .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
-                .add_custom_ignore_filename(".helix/ignore")
+                .add_custom_ignore_filename(".fefix/ignore")
                 .build_parallel()
                 .run(|| {
                     let mut searcher = searcher.clone();

@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 30
     env:
       RUST_BACKTRACE: 1
-      HELIX_LOG_LEVEL: info
+      FEFIX_LOG_LEVEL: info
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7

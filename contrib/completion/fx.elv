@@ -1,5 +1,5 @@
-# You can move it here ~/.config/elvish/lib/hx.elv
-# Or add `eval (slurp < ~/$REPOS/helix/contrib/completion/hx.elv)`
+# You can move it here ~/.config/elvish/lib/fx.elv
+# Or add `eval (slurp < ~/$REPOS/fefix/contrib/completion/fx.elv)`
 # Be sure to replace `$REPOS` with something that makes sense for you!
 
 ### Renders a pretty completion candidate
@@ -16,8 +16,8 @@ var grammar = [ "--grammar" "-g" ]
 ### Config commands
 var config = [ "--config" "-c" ]
 
-### Set an arg-completer for the `hx` binary
-set edit:completion:arg-completer[hx] = {|@args|
+### Set an arg-completer for the `fx` binary
+set edit:completion:arg-completer[fx] = {|@args|
   var n = (count $args)
   if (>= $n 3) {
     # Stop completions if passed arg will take precedence

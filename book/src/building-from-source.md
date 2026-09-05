@@ -47,14 +47,14 @@ RUSTFLAGS="-C target-feature=-crt-static"
       --locked
    ```
 
-   Either command will create the `hx` executable and construct the tree-sitter
+   Either command will create the `fx` executable and construct the tree-sitter
    grammars in the local `runtime` folder.
 
-> 💡 If you do not want to fetch or build grammars, set an environment variable `HELIX_DISABLE_AUTO_GRAMMAR_BUILD`
+> 💡 If you do not want to fetch or build grammars, set an environment variable `FEFIX_DISABLE_AUTO_GRAMMAR_BUILD`
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
-> grammars with `hx --grammar fetch` and compile them with
-> `hx --grammar build`. This will install them in
+> grammars with `fx --grammar fetch` and compile them with
+> `fx --grammar build`. This will install them in
 > the `runtime` directory within the user's fefix config directory (more
 > [details below](#multiple-runtime-directories)).
 
@@ -65,27 +65,27 @@ RUSTFLAGS="-C target-feature=-crt-static"
 #### Linux and macOS
 
 The **runtime** directory is one below the fefix source, so either export a
-`HELIX_RUNTIME` environment variable to point to that directory and add it to
+`FEFIX_RUNTIME` environment variable to point to that directory and add it to
 your `~/.bashrc` or equivalent:
 
 ```sh
-export HELIX_RUNTIME=~/src/helix/runtime
+export FEFIX_RUNTIME=~/src/fefix/runtime
 ```
 
 Or, create a symbolic link:
 
 ```sh
-ln -Tsf $PWD/runtime ~/.config/helix/runtime
+ln -Tsf $PWD/runtime ~/.config/fefix/runtime
 ```
 
 #### Windows
 
-Either set the `HELIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for
+Either set the `FEFIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for
 `Edit environment variables for your account`) or use the `setx` command in
 Cmd:
 
 ```sh
-setx HELIX_RUNTIME "%userprofile%\src\fefix\runtime"
+setx FEFIX_RUNTIME "%userprofile%\src\fefix\runtime"
 ```
 
 > 💡 `%userprofile%` resolves to your user directory like
@@ -109,13 +109,13 @@ following order:
 1. `runtime/` sibling directory to `$CARGO_MANIFEST_DIR` directory (this is intended for
   developing and testing fefix only).
 2. `runtime/` subdirectory of OS-dependent fefix user config directory.
-3. `$HELIX_RUNTIME`
+3. `$FEFIX_RUNTIME`
 4. Distribution-specific fallback directory (set at compile time—not run time—
-   with the `HELIX_DEFAULT_RUNTIME` environment variable)
+   with the `FEFIX_DEFAULT_RUNTIME` environment variable)
 5. `runtime/` directory of the cargo workspace containing either the fefix
    executable or the current working directory. This is a fallback for
    directly running a binary built from a source checkout (for example
-   `target/release/hx`) without setting `HELIX_RUNTIME` or creating a config
+   `target/release/fx`) without setting `FEFIX_RUNTIME` or creating a config
    symlink; it only applies when the binary is run from inside a checkout.
 6. `runtime/` subdirectory of path to fefix executable.
 
@@ -125,20 +125,20 @@ directories have files with the same name.
 #### Note to packagers
 
 If you are making a package of fefix for end users, to provide a good out of
-the box experience, you should set the `HELIX_DEFAULT_RUNTIME` environment
+the box experience, you should set the `FEFIX_DEFAULT_RUNTIME` environment
 variable at build time (before invoking `cargo build`) to a directory which
 will store the final runtime files after installation. For example, say you want
 to package the runtime into `/usr/lib/fefix/runtime`. The rough steps a build
 script could follow are:
 
-1. `export HELIX_DEFAULT_RUNTIME=/usr/lib/fefix/runtime`
+1. `export FEFIX_DEFAULT_RUNTIME=/usr/lib/fefix/runtime`
 1. `cargo build --profile opt --locked`
 1. `cp -r runtime $BUILD_DIR/usr/lib/fefix/`
-1. `cp target/opt/hx $BUILD_DIR/usr/bin/hx`
+1. `cp target/opt/fx $BUILD_DIR/usr/bin/fx`
 
-This way the resulting `hx` binary will always look for its runtime directory in
-`/usr/lib/fefix/runtime` if the user has no custom runtime in `~/.config/helix`
-or `HELIX_RUNTIME`.
+This way the resulting `fx` binary will always look for its runtime directory in
+`/usr/lib/fefix/runtime` if the user has no custom runtime in `~/.config/fefix`
+or `FEFIX_RUNTIME`.
 
 ### Validating the installation
 
@@ -146,7 +146,7 @@ To make sure everything is set up as expected you should run the fefix health
 check:
 
 ```sh
-hx --health
+fx --health
 ```
 
 For more information on the health check results refer to
@@ -166,7 +166,7 @@ cp contrib/helix.png ~/.icons # or ~/.local/share/icons
 It is recommended to convert the links in the `.desktop` file to absolute paths to avoid potential problems:
 
 ```sh
-sed -i -e "s|Exec=hx %F|Exec=$(readlink -f ~/.cargo/bin/hx) %F|g" \
+sed -i -e "s|Exec=fx %F|Exec=$(readlink -f ~/.cargo/bin/fx) %F|g" \
   -e "s|Icon=Helix|Icon=$(readlink -f ~/.icons/helix.png)|g" ~/.local/share/applications/Helix.desktop
 ```
 
@@ -174,7 +174,7 @@ To use another terminal than the system default, you can modify the `.desktop`
 file. For example, to use `kitty`:
 
 ```sh
-sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
+sed -i "s|Exec=fx %F|Exec=kitty fx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
 
@@ -198,7 +198,7 @@ cargo deb -- --locked
 ```
 
 > 💡 This locks you into the `--release` profile. But you can also build fefix in any way you like.
-> As long as you leave a `target/release/hx` file, it will get packaged with `cargo deb --no-build`
+> As long as you leave a `target/release/fx` file, it will get packaged with `cargo deb --no-build`
 
 > 💡 Don't worry about the following:
 > ```

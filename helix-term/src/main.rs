@@ -38,7 +38,7 @@ async fn main_impl() -> Result<i32> {
 {}
 
 USAGE:
-    hx [FLAGS] [files]...
+    fx [FLAGS] [files]...
 
 ARGS:
     <files>...    Set the input file to use, position can also be specified via file[:row[:col]]
@@ -64,7 +64,7 @@ FLAGS:
     +[N]                           Open the first given file at line number N, or the last line, if
                                    N is not specified.
 ",
-            env!("CARGO_PKG_NAME"),
+            "fefix",
             VERSION_AND_GIT_HASH,
             env!("CARGO_PKG_AUTHORS"),
             env!("CARGO_PKG_DESCRIPTION"),
@@ -74,7 +74,7 @@ FLAGS:
     }
 
     if args.display_version {
-        println!("helix {}", VERSION_AND_GIT_HASH);
+        println!("fefix {}", VERSION_AND_GIT_HASH);
         std::process::exit(0);
     }
 
@@ -91,9 +91,9 @@ FLAGS:
     }
 
     if args.fetch_grammars || args.build_grammars {
-        // `hx --grammar fetch`/`hx --grammar build` always install grammars
+        // `fx --grammar fetch`/`fx --grammar build` always install grammars
         // into the runtime directory in the user's config directory, so any
-        // `hx` binary finds them no matter where it is run from. The
+        // `fx` binary finds them no matter where it is run from. The
         // compile-time auto grammar build (see `helix-term/build.rs`), in
         // contrast, installs into the workspace runtime directory.
         let install_dir = helix_loader::config_dir().join("runtime");

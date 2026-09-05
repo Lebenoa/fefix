@@ -57,7 +57,7 @@
 | `bufferline` | Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use) | `"never"` |
 | `color-modes` | Whether to color the mode indicator with different colors depending on the mode itself | `false` |
 | `text-width` | Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap-at-text-width` is set | `80` |
-| `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml` | `[]` |
+| `workspace-lsp-roots` | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.fefix/config.toml` | `[]` |
 | `default-line-ending` | The line ending to use for new documents. Can be `native`, `lf`, `crlf`, `ff`, `cr` or `nel`. `native` uses the platform's native line ending (`crlf` on Windows, otherwise `lf`). | `"native"` |
 | `insert-final-newline` | Whether to automatically insert a trailing line-ending on write if missing | `true` |
 | `atomic-save` | Whether to use atomic operations to write documents to disk. This prevents data loss if the editor is interrupted while writing the file, but may confuse some file watching/hot reloading programs. | `true` |
@@ -221,8 +221,8 @@ All git related options are only enabled in a git repository.
 
 Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
 
-Additionally, you can use fefix-specific ignore files by creating a local `.helix/ignore` file in the current workspace or a global `ignore` file located in your fefix config directory:
-- Linux and Mac: `~/.config/helix/ignore`
+Additionally, you can use fefix-specific ignore files by creating a local `.fefix/ignore` file in the current workspace or a global `ignore` file located in your fefix config directory:
+- Linux and Mac: `~/.config/fefix/ignore`
 - Windows: `%AppData%\fefix\ignore`
 
 Example:
@@ -579,7 +579,7 @@ prompt = false
 # "insecure": trust everything (discouraged).
 level = "servers"
 
-# Discouraged: skips .helix/ change detection and trusts anything that lands
+# Discouraged: skips .fefix/ change detection and trusts anything that lands
 # under a matching path. `~` and environment variables are expanded.
 trusted = ["~/src/github.com/me/*"]
 ```

@@ -34,8 +34,8 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 ///
 /// 1. sibling directory to `CARGO_MANIFEST_DIR` (if environment variable is set)
 /// 2. subdirectory of user config directory (always included)
-/// 3. `HELIX_RUNTIME` (if environment variable is set)
-/// 4. `HELIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
+/// 3. `FEFIX_RUNTIME` (if environment variable is set)
+/// 4. `FEFIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
 /// 5. subdirectory of the cargo workspace the executable was built in or was
 ///    started from, when it is run directly from a source checkout
 /// 6. subdirectory of path to helix executable (always included)
@@ -55,7 +55,7 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     let conf_rt_dir = config_dir().join(RT_DIR);
     rt_dirs.push(conf_rt_dir);
 
-    if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+    if let Ok(dir) = std::env::var("FEFIX_RUNTIME") {
         let dir = path::expand_tilde(Path::new(&dir));
         rt_dirs.push(path::normalize(dir));
     }
@@ -64,15 +64,15 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     // in the lookup list. This allows downstream packagers to set a fallback
     // directory to a location that is conventional on their distro so that they
     // need not resort to a wrapper script or a global environment variable.
-    if let Some(dir) = std::option_env!("HELIX_DEFAULT_RUNTIME") {
+    if let Some(dir) = std::option_env!("FEFIX_DEFAULT_RUNTIME") {
         rt_dirs.push(dir.into());
     }
 
     // When a binary built from a source checkout is run directly (e.g.
-    // `target/release/hx`), it does not get the `CARGO_MANIFEST_DIR` runtime
+    // `target/release/fx`), it does not get the `CARGO_MANIFEST_DIR` runtime
     // fallback that `cargo run` provides, so release binaries previously lost
     // access to the workspace `runtime` directory (grammars, queries, themes)
-    // unless `HELIX_RUNTIME` was set or a config symlink existed. Recover the
+    // unless `FEFIX_RUNTIME` was set or a config symlink existed. Recover the
     // same fallback from the cargo workspace containing either the executable
     // or the current working directory, so directly run binaries behave like
     // `cargo run` ones.
@@ -169,7 +169,7 @@ pub fn config_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the config directory!");
     let mut path = strategy.config_dir();
-    path.push("helix");
+    path.push("fefix");
     path
 }
 
@@ -177,14 +177,14 @@ pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the cache directory!");
     let mut path = strategy.cache_dir();
-    path.push("helix");
+    path.push("fefix");
     path
 }
 
 pub fn data_dir() -> PathBuf {
     let strategy = choose_base_strategy().expect("Unable to find the data directory!");
     let mut path = strategy.data_dir();
-    path.push("helix");
+    path.push("fefix");
     path
 }
 
@@ -197,11 +197,11 @@ pub fn log_file() -> PathBuf {
 }
 
 pub fn workspace_config_file() -> PathBuf {
-    find_workspace().0.join(".helix").join("config.toml")
+    find_workspace().0.join(".fefix").join("config.toml")
 }
 
 pub fn workspace_lang_config_file() -> PathBuf {
-    find_workspace().0.join(".helix").join("languages.toml")
+    find_workspace().0.join(".fefix").join("languages.toml")
 }
 
 pub fn lang_config_file() -> PathBuf {
@@ -209,7 +209,7 @@ pub fn lang_config_file() -> PathBuf {
 }
 
 pub fn default_log_file() -> PathBuf {
-    cache_dir().join("helix.log")
+    cache_dir().join("fefix.log")
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
@@ -299,7 +299,7 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 /// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
 ///
 /// This function starts searching the FS upward from the CWD
-/// and returns the first directory that contains either `.git`, `.svn`, `.jj` or `.helix`.
+/// and returns the first directory that contains either `.git`, `.svn`, `.jj` or `.fefix`.
 /// If no workspace was found returns (CWD, true).
 /// Otherwise (workspace, false) is returned
 pub fn find_workspace() -> (PathBuf, bool) {
@@ -313,7 +313,7 @@ pub fn find_workspace_in(dir: impl AsRef<Path>) -> (PathBuf, bool) {
         if ancestor.join(".git").exists()
             || ancestor.join(".svn").exists()
             || ancestor.join(".jj").exists()
-            || ancestor.join(".helix").exists()
+            || ancestor.join(".fefix").exists()
         {
             return (ancestor.to_owned(), false);
         }

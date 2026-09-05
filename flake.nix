@@ -20,14 +20,14 @@
     pkgsFor = eachSystem (system:
       import nixpkgs {
         localSystem.system = system;
-        overlays = [(import rust-overlay) self.overlays.helix];
+        overlays = [(import rust-overlay) self.overlays.fefix];
       });
     gitRev = self.rev or self.dirtyRev or null;
   in {
     packages = eachSystem (system: {
-      inherit (pkgsFor.${system}) helix;
+      inherit (pkgsFor.${system}) fefix;
       /*
-      The default Helix build. Uses the latest stable Rust toolchain, and unstable
+      The default fefix build. Uses the latest stable Rust toolchain, and unstable
       nixpkgs.
 
       The build inputs can be overridden with the following:
@@ -38,18 +38,18 @@
 
       packages.${system}.default.overrideAttrs { buildType = "debug"; };
       */
-      default = self.packages.${system}.helix;
+      default = self.packages.${system}.fefix;
     });
     checks =
       lib.mapAttrs (system: pkgs: let
-        # Get Helix's MSRV toolchain to build with by default.
+        # Get fefix's MSRV toolchain to build with by default.
         msrvToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         msrvPlatform = pkgs.makeRustPlatform {
           cargo = msrvToolchain;
           rustc = msrvToolchain;
         };
       in {
-        helix = self.packages.${system}.helix.override {
+        fefix = self.packages.${system}.fefix.override {
           rustPlatform = msrvPlatform;
         };
       })
@@ -64,7 +64,7 @@
         in
           pkgs.mkShell {
             inputsFrom = [
-              (self.checks.${system}.helix.override {
+              (self.checks.${system}.fefix.override {
                 includeGrammarIf = _: false;
               })
             ];
@@ -90,7 +90,7 @@
         helix = final.callPackage ./default.nix {inherit gitRev;};
       };
 
-      default = self.overlays.helix;
+      default = self.overlays.fefix;
     };
   };
   nixConfig = {

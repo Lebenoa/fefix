@@ -3,9 +3,9 @@ use helix_loader::grammar::{build_grammars, fetch_grammars};
 const STRICT: bool = true;
 
 fn main() {
-    if std::env::var("HELIX_DISABLE_AUTO_GRAMMAR_BUILD").is_err() {
+    if std::env::var("FEFIX_DISABLE_AUTO_GRAMMAR_BUILD").is_err() {
         // The compile-time auto build installs grammars into the workspace
-        // runtime directory (unlike `hx --grammar build`, which installs into
+        // runtime directory (unlike `fx --grammar build`, which installs into
         // the user config directory) so the binary stays self-contained with
         // the runtime directory it is shipped alongside.
         let install_dir = helix_loader::runtime_dirs()

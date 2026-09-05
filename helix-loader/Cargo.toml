@@ -11,7 +11,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [[bin]]
-name = "hx-loader"
+name = "fx-loader"
 path = "src/main.rs"
 
 [dependencies]

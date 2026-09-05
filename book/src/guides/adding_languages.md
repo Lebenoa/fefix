@@ -60,12 +60,12 @@ below.
 ## Common issues
 
 - If you encounter errors when running fefix after switching branches, you may
-  need to update the tree-sitter grammars. Run the command `hx --grammar fetch`
-  to fetch the grammars and `hx --grammar build` to build any out-of-date
+  need to update the tree-sitter grammars. Run the command `fx --grammar fetch`
+  to fetch the grammars and `fx --grammar build` to build any out-of-date
   grammars.
 - If a parser is causing a segfault, or you want to remove it, make sure to
   remove the compiled parser located at `runtime/grammars/<name>.so`.
-- If you are attempting to add queries and fefix is unable to locate them, ensure that the environment variable `HELIX_RUNTIME` is set to the location of the `runtime` folder you're developing in.
+- If you are attempting to add queries and fefix is unable to locate them, ensure that the environment variable `FEFIX_RUNTIME` is set to the location of the `runtime` folder you're developing in.
 - Validate queries with `cargo xtask query-check [language]` (every query file
   must compile against the grammar). `highlight-check` and `indent-check`
   additionally run the real highlighter and indenter over the test fixtures catch mistakes.

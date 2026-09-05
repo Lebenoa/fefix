@@ -83,7 +83,7 @@ pub struct Application {
 
 #[cfg(feature = "integration")]
 fn setup_integration_logging() {
-    let level = std::env::var("HELIX_LOG_LEVEL")
+    let level = std::env::var("FEFIX_LOG_LEVEL")
         .map(|lvl| lvl.parse().unwrap())
         .unwrap_or(log::LevelFilter::Info);
 

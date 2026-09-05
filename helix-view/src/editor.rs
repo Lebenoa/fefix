@@ -650,7 +650,7 @@ pub enum ImplicitTrustLevelConfig {
     /// Trust Helix-launched server processes (LSP and DAP) implicitly. Workspace-local config and
     /// git full-trust still require explicit `:workspace-trust`. This is the default — language
     /// servers are configured globally, so auto-starting them in fresh workspaces matches user
-    /// expectations while the workspace-controlled `.helix/` config still requires opt-in.
+    /// expectations while the workspace-controlled `.fefix/` config still requires opt-in.
     #[default]
     Servers,
     /// Trust everything implicitly. Explicit excludes still win.

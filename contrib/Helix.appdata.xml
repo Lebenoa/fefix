@@ -105,7 +105,7 @@
   </keywords>
 
   <provides>
-    <binary>hx</binary>
+    <binary>fx</binary>
     <mediatype>text/english</mediatype>
     <mediatype>text/plain</mediatype>
     <mediatype>text/x-makefile</mediatype>

@@ -29,7 +29,7 @@ The following third party repositories are available:
 ### Debian
 
 ```sh
-sudo apt install hx
+sudo apt install fx
 ```
 
 If you are running a system older than Debian 13, follow the steps for
@@ -37,7 +37,7 @@ If you are running a system older than Debian 13, follow the steps for
 
 ### Ubuntu/Mint
 
-Install the Debian package [from the release page](https://github.com/helix-editor/helix/releases/latest).
+Install the Debian package [from the release page](https://github.com/Lebenoa/fefix/releases/latest).
 
 If you are running a system older than Ubuntu 22.04, Mint 21, or Debian 12, you can build the `.deb` file locally
 [from source](./building-from-source.md#building-the-debian-package).
@@ -60,7 +60,7 @@ sudo pacman -S helix
 >
 > For example:
 > ```sh
-> helix --health
+> hx --health
 > ```
 > to check health
 
@@ -104,17 +104,17 @@ This will install Helix as both `/snap/bin/helix` and `/snap/bin/hx`, so make su
 ### AppImage
 
 Install Helix using the Linux [AppImage](https://appimage.org/) format.
-Download the official Helix AppImage from the [latest releases](https://github.com/helix-editor/helix/releases/latest) page.
+Download the fefix AppImage from the [latest releases](https://github.com/Lebenoa/fefix/releases/latest) page.
 
 ```sh
-chmod +x helix-*.AppImage # change permission for executable mode
-./helix-*.AppImage # run helix
+chmod +x fefix-*.AppImage # change permission for executable mode
+./fefix-*.AppImage # run fx
 ```
 
-You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut). Helix must be installed in `PATH` with the name `hx`. For example:
+You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut). Helix must be installed in `PATH` with the name `fx`. For example:
 ```sh
 mkdir -p "$HOME/.local/bin"
-mv helix-*.AppImage "$HOME/.local/bin/hx"
+mv fefix-*.AppImage "$HOME/.local/bin/fx"
 ```
 
 and make sure `~/.local/bin` is in your `PATH`.

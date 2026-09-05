@@ -369,7 +369,7 @@ fn read_children(dir: &Path, config: &FileTreeConfig) -> Vec<TreeEntry> {
         .max_depth(Some(1))
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
-        .add_custom_ignore_filename(".helix/ignore")
+        .add_custom_ignore_filename(".fefix/ignore")
         .build()
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.path() != dir)
@@ -827,7 +827,7 @@ mod tests {
     impl TempDir {
         fn new(name: &str) -> Self {
             let dir = std::env::temp_dir()
-                .join(format!("hx-file-tree-test-{}-{name}", std::process::id()));
+                .join(format!("fx-file-tree-test-{}-{name}", std::process::id()));
             let _ = fs::remove_dir_all(&dir);
             fs::create_dir_all(&dir).unwrap();
             TempDir(dir)
