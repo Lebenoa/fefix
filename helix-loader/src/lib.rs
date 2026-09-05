@@ -36,7 +36,9 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 /// 2. subdirectory of user config directory (always included)
 /// 3. `HELIX_RUNTIME` (if environment variable is set)
 /// 4. `HELIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
-/// 5. subdirectory of path to helix executable (always included)
+/// 5. subdirectory of the cargo workspace the executable was built in or was
+///    started from, when it is run directly from a source checkout
+/// 6. subdirectory of path to helix executable (always included)
 ///
 /// Postcondition: returns at least two paths (they might not exist).
 fn prioritize_runtime_dirs() -> Vec<PathBuf> {
@@ -66,15 +68,61 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
         rt_dirs.push(dir.into());
     }
 
+    // When a binary built from a source checkout is run directly (e.g.
+    // `target/release/hx`), it does not get the `CARGO_MANIFEST_DIR` runtime
+    // fallback that `cargo run` provides, so release binaries previously lost
+    // access to the workspace `runtime` directory (grammars, queries, themes)
+    // unless `HELIX_RUNTIME` was set or a config symlink existed. Recover the
+    // same fallback from the cargo workspace containing either the executable
+    // or the current working directory, so directly run binaries behave like
+    // `cargo run` ones.
+    let canonical_exe = std::env::current_exe()
+        .ok()
+        .and_then(|path| std::fs::canonicalize(path).ok());
+    let mut workspace_rt_dirs = Vec::new();
+    if let Some(exe_path) = canonical_exe.as_deref() {
+        if let Some(dir) = exe_path
+            .parent()
+            .and_then(|dir| ancestor_runtime_dir(dir, RT_DIR))
+        {
+            if !workspace_rt_dirs.contains(&dir) {
+                workspace_rt_dirs.push(dir);
+            }
+        }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        if let Some(dir) = ancestor_runtime_dir(&cwd, RT_DIR) {
+            if !workspace_rt_dirs.contains(&dir) {
+                workspace_rt_dirs.push(dir);
+            }
+        }
+    }
+    for rt_dir in workspace_rt_dirs {
+        log::debug!("runtime dir: {}", rt_dir.to_string_lossy());
+        rt_dirs.push(rt_dir);
+    }
+
     // fallback to location of the executable being run
     // canonicalize the path in case the executable is symlinked
-    let exe_rt_dir = std::env::current_exe()
-        .ok()
-        .and_then(|path| std::fs::canonicalize(path).ok())
+    let exe_rt_dir = canonical_exe
+        .as_deref()
         .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
         .unwrap();
     rt_dirs.push(exe_rt_dir);
     rt_dirs
+}
+
+/// Finds the `runtime` directory of the cargo workspace containing `dir`, if
+/// any: the nearest ancestor directory that contains a `Cargo.toml` next to a
+/// `runtime` directory. Binaries run from outside a workspace (cargo install,
+/// distro packages, ...) have no such ancestor and are unaffected.
+fn ancestor_runtime_dir(mut dir: &Path, rt_dir_name: &str) -> Option<PathBuf> {
+    loop {
+        if dir.join("Cargo.toml").is_file() && dir.join(rt_dir_name).is_dir() {
+            return Some(dir.join(rt_dir_name));
+        }
+        dir = dir.parent()?;
+    }
 }
 
 /// Runtime directories ordered from highest to lowest priority

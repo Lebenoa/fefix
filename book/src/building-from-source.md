@@ -112,7 +112,12 @@ following order:
 3. `$HELIX_RUNTIME`
 4. Distribution-specific fallback directory (set at compile time—not run time—
    with the `HELIX_DEFAULT_RUNTIME` environment variable)
-5. `runtime/` subdirectory of path to Helix executable.
+5. `runtime/` directory of the cargo workspace containing either the Helix
+   executable or the current working directory. This is a fallback for
+   directly running a binary built from a source checkout (for example
+   `target/release/hx`) without setting `HELIX_RUNTIME` or creating a config
+   symlink; it only applies when the binary is run from inside a checkout.
+6. `runtime/` subdirectory of path to Helix executable.
 
 This order also sets the priority for selecting which file will be used if multiple runtime
 directories have files with the same name.

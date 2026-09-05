@@ -90,13 +90,19 @@ FLAGS:
         std::process::exit(0);
     }
 
-    if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars(args.strict)?;
-        return Ok(0);
-    }
-
-    if args.build_grammars {
-        helix_loader::grammar::build_grammars(None, args.strict)?;
+    if args.fetch_grammars || args.build_grammars {
+        // `hx --grammar fetch`/`hx --grammar build` always install grammars
+        // into the runtime directory in the user's config directory, so any
+        // `hx` binary finds them no matter where it is run from. The
+        // compile-time auto grammar build (see `helix-term/build.rs`), in
+        // contrast, installs into the workspace runtime directory.
+        let install_dir = helix_loader::config_dir().join("runtime");
+        if args.fetch_grammars {
+            helix_loader::grammar::fetch_grammars(args.strict, &install_dir)?;
+        }
+        if args.build_grammars {
+            helix_loader::grammar::build_grammars(None, args.strict, &install_dir)?;
+        }
         return Ok(0);
     }
 

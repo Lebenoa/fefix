@@ -108,7 +108,7 @@ fn warn_if_workspace_languages_skipped(trust: &crate::workspace_trust::Workspace
     );
 }
 
-pub fn fetch_grammars(strict: bool) -> Result<()> {
+pub fn fetch_grammars(strict: bool, install_dir: &Path) -> Result<()> {
     ensure_git_is_available()?;
 
     // We do not need to fetch local grammars.
@@ -120,6 +120,7 @@ pub fn fetch_grammars(strict: bool) -> Result<()> {
 
     println!("Fetching {} grammars", total);
     let counter = Arc::clone(&counter);
+    let install_dir = install_dir.to_owned();
 
     let results = run_parallel(grammars, move |grammar| {
         let current = counter.fetch_add(1, Ordering::Relaxed) + 1;
@@ -128,7 +129,7 @@ pub fn fetch_grammars(strict: bool) -> Result<()> {
             "Fetching grammars ({}/{}): {}",
             current, total, grammar.grammar_id
         );
-        fetch_grammar(grammar)
+        fetch_grammar(grammar, &install_dir)
     });
 
     let mut errors = Vec::new();
@@ -184,7 +185,7 @@ pub fn fetch_grammars(strict: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
+pub fn build_grammars(target: Option<String>, strict: bool, install_dir: &Path) -> Result<()> {
     ensure_git_is_available()?;
 
     let grammars = get_grammar_configs()?;
@@ -195,6 +196,7 @@ pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
     println!("Building {} grammars", grammars.len());
 
     let counter = Arc::clone(&counter);
+    let install_dir = install_dir.to_owned();
     let results = run_parallel(grammars, move |grammar| {
         let current = counter.fetch_add(1, Ordering::Relaxed) + 1;
 
@@ -202,7 +204,7 @@ pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
             "Building grammars ({}/{}): {}",
             current, total, grammar.grammar_id
         );
-        build_grammar(grammar, target.as_deref())
+        build_grammar(grammar, target.as_deref(), &install_dir)
     });
 
     let mut errors = Vec::new();
@@ -366,13 +368,8 @@ struct VendoredGrammar {
 }
 
 impl VendoredGrammar {
-    fn new(grammar: &str) -> Self {
-        let dir = crate::runtime_dirs()
-            .first()
-            .expect("No runtime directories provided") // guaranteed by post-condition
-            .join("grammars")
-            .join("sources")
-            .join(grammar);
+    fn new(grammar: &str, install_dir: &Path) -> Self {
+        let dir = install_dir.join("grammars").join("sources").join(grammar);
 
         Self { dir }
     }
@@ -441,7 +438,7 @@ impl VendoredGrammar {
     }
 }
 
-fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
+fn fetch_grammar(grammar: GrammarConfiguration, install_dir: &Path) -> Result<FetchStatus> {
     let GrammarSource::Git {
         remote, revision, ..
     } = grammar.source
@@ -449,7 +446,7 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         return Ok(FetchStatus::NonGit);
     };
 
-    let repo = VendoredGrammar::new(&grammar.grammar_id);
+    let repo = VendoredGrammar::new(&grammar.grammar_id, install_dir);
 
     let (object_format, revision) = extract_object_format_from_revision(&revision);
 
@@ -499,13 +496,15 @@ enum BuildStatus {
     Built,
 }
 
-fn build_grammar(grammar: GrammarConfiguration, target: Option<&str>) -> Result<BuildStatus> {
+fn build_grammar(
+    grammar: GrammarConfiguration,
+    target: Option<&str>,
+    install_dir: &Path,
+) -> Result<BuildStatus> {
     let grammar_dir = if let GrammarSource::Local { path } = &grammar.source {
         PathBuf::from(&path)
     } else {
-        crate::runtime_dirs()
-            .first()
-            .expect("No runtime directories provided") // guaranteed by post-condition
+        install_dir
             .join("grammars")
             .join("sources")
             .join(&grammar.grammar_id)
@@ -534,13 +533,14 @@ fn build_grammar(grammar: GrammarConfiguration, target: Option<&str>) -> Result<
     }
     .join("src");
 
-    build_tree_sitter_library(&path, grammar, target)
+    build_tree_sitter_library(&path, grammar, target, install_dir)
 }
 
 fn build_tree_sitter_library(
     src_path: &Path,
     grammar: GrammarConfiguration,
     target: Option<&str>,
+    install_dir: &Path,
 ) -> Result<BuildStatus> {
     let header_path = src_path;
     let parser_path = src_path.join("parser.c");
@@ -556,10 +556,12 @@ fn build_tree_sitter_library(
             None
         }
     };
-    let parser_lib_path = crate::runtime_dirs()
-        .first()
-        .expect("No runtime directories provided") // guaranteed by post-condition
-        .join("grammars");
+    let parser_lib_path = install_dir.join("grammars");
+    // Create the directory if it does not exist yet (e.g. running
+    // `hx --grammar build` before `hx --grammar fetch`, or for local
+    // grammars) so the grammars are installed automatically.
+    fs::create_dir_all(&parser_lib_path)
+        .with_context(|| format!("Could not create grammar directory {:?}", parser_lib_path))?;
     let mut library_path = parser_lib_path.join(&grammar.grammar_id);
     library_path.set_extension(DYLIB_EXTENSION);
 
