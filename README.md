@@ -33,20 +33,27 @@ All shortcuts/keymaps can be found [in the documentation on the website](https:/
 This fork tracks [upstream Helix](https://github.com/helix-editor/helix) (currently
 based on commit `079a789e`, 2026-07-23) with the following addition:
 
-- **File tree sidebar** — a VS Code / Zed style file tree, opened with
-  `<space>t` (workspace root, revealing the current buffer) or `<space>T`
-  (current buffer's directory). Directories expand and collapse lazily
-  (`<right>`/`<left>` or `l`/`h`, `enter` to toggle), files open with `enter`,
-  and `r` refreshes the selected directory. Backed by the `file_tree`,
-  `file_tree_in_current_buffer_directory`, `file_tree_in_current_directory` and
-  `close_file_tree` commands.
+- **File tree window** — a VS Code / Zed style file tree docked to the left
+  of the editor, toggled with `<space>t` (workspace root, revealing the
+  current buffer) while `<space>T` opens or re-roots it at the current
+  buffer's directory. It is a persistent window, not a modal overlay:
+  `enter` on a file opens it and moves focus to the editor while the window
+  stays open, `esc` moves focus from the tree to the editor, and clicking in
+  either pane focuses it. Directories expand and collapse lazily
+  (`<right>`/`<left>` or `l`/`h`, `enter` to toggle), and `r` refreshes the
+  selected directory. Backed by the `file_tree`,
+  `file_tree_in_current_buffer_directory`, `file_tree_in_current_directory`
+  and `close_file_tree` commands.
 
-  Behavior is configured in the `[editor.file-tree]` section (ignore handling
-  and `icons`). Icons use Nerd Font glyphs (v3 or later): `icons = true|false|
-  "auto"` forces them on/off or enables them automatically when the terminal
-  is detected as Nerd Font capable. Folders get an open/closed folder glyph
-  and files a type-specific glyph (rust, markdown, git, etc.). Expanded
-  directories are remembered across tree sessions.
+  Behavior is configured in the `[editor.file-tree]` section (ignore handling,
+  `width`, and `icons`). The content width starts at the `width` option
+  (default 30 columns) and can be resized live by dragging the separator
+  between the tree and the editor with the mouse. Icons use Nerd Font glyphs (v3 or later): `icons = "auto"`
+  (the default) enables them when the terminal is detected as Nerd Font
+  capable, `icons = "nerdfont"` always renders them and `icons = "ascii"`
+  falls back to ASCII expand/collapse arrows. Folders get an open/closed
+  folder glyph and files a type-specific glyph (rust, markdown, git, etc.).
+  Expanded directories are remembered across tree sessions.
 
 See the [CHANGELOG](./CHANGELOG.md) for details.
 

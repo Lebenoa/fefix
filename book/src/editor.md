@@ -265,7 +265,8 @@ Configure the file tree sidebar (see the `file_tree` command). Like the file exp
 |`git-ignore` | Enables reading `.gitignore` files | `true`
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `true`
-|`icons` | Show VS Code / Zed style folder and file icons. Folders get an open/closed folder glyph and files get a type-specific glyph (rust, markdown, git, etc., falling back to a generic file glyph). Icons use Nerd Font glyphs (v3 or later) and fall back to ASCII arrows when disabled. Accepts `true`, `false` or `"auto"`; `"auto"` enables icons when the terminal is likely to support Nerd Fonts (detected from `TERM_PROGRAM`/`TERM` and friends) | `"auto"`
+|`width` | Preferred width of the file tree content in columns (the separator column between the tree and the editor excluded). The width can also be adjusted per session by dragging that separator with the mouse | `30`
+|`icons` | Show VS Code / Zed style folder and file icons. Folders get an open/closed folder glyph and files get a type-specific glyph (rust, markdown, git, etc., falling back to a generic file glyph). Icons use Nerd Font glyphs (v3 or later). Accepts `"auto"` (the default), `"nerdfont"` or `"ascii"`: `"auto"` enables icons when the terminal is likely to support Nerd Fonts (detected from `TERM_PROGRAM`/`TERM` and friends; on Termux the font installed at `~/.termux/font.ttf` is inspected directly), `"nerdfont"` always renders them and `"ascii"` falls back to ASCII expand/collapse arrows | `"auto"`
 
 ### `[editor.buffer-picker]` Section
 

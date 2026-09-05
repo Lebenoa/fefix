@@ -266,57 +266,23 @@ impl Default for FileExplorerConfig {
     }
 }
 
-/// Whether to show VS Code / Zed style icons in the file tree. The icons are
-/// rendered with Nerd Font glyphs and require a Nerd Font (v3 or later) in
-/// the terminal. `Auto` (the default) enables icons when the terminal is
-/// likely to support Nerd Fonts, detected from its environment; set `true` or
-/// `false` to override the detection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+/// The icon style used in the file tree. The Nerd Font icons are rendered
+/// with Nerd Font glyphs and require a Nerd Font (v3 or later) in the
+/// terminal. `Auto` (the default) uses Nerd Font icons when the terminal is
+/// likely to support them, detected from its environment; `Ascii` and
+/// `NerdFont` override the detection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IconMode {
-    /// Enable icons when the terminal is likely to support Nerd Fonts.
+    /// Use ASCII expand/collapse arrows (`▸`/`▾`) instead of Nerd Font icons.
+    #[serde(rename = "ascii")]
+    Ascii,
+    /// Always use Nerd Font icons, whether or not the terminal is detected as
+    /// supporting them.
+    #[serde(rename = "nerdfont")]
+    NerdFont,
+    /// Use Nerd Font icons when the terminal is likely to support them.
+    #[serde(rename = "auto")]
     Auto,
-    /// Explicitly enable or disable icons.
-    Enabled(bool),
-}
-
-impl<'de> Deserialize<'de> for IconMode {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct IconModeVisitor;
-
-        impl<'de> serde::de::Visitor<'de> for IconModeVisitor {
-            type Value = IconMode;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a boolean or the string \"auto\"")
-            }
-
-            fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                Ok(IconMode::Enabled(value))
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                if value == "auto" {
-                    Ok(IconMode::Auto)
-                } else {
-                    Err(serde::de::Error::invalid_value(
-                        serde::de::Unexpected::Str(value),
-                        &self,
-                    ))
-                }
-            }
-        }
-
-        deserializer.deserialize_any(IconModeVisitor)
-    }
 }
 
 impl Default for IconMode {
@@ -326,21 +292,24 @@ impl Default for IconMode {
 }
 
 impl IconMode {
-    /// Whether icons are effectively enabled, resolving `Auto` against the
-    /// terminal environment.
+    /// Whether Nerd Font icons are effectively enabled, resolving `Auto`
+    /// against the terminal environment.
     pub fn enabled(self) -> bool {
         match self {
-            IconMode::Enabled(enabled) => enabled,
+            IconMode::Ascii => false,
+            IconMode::NerdFont => true,
             IconMode::Auto => nerd_font_supported(),
         }
     }
 }
 
 /// A heuristic for whether the running terminal is likely to render Nerd Font
-/// glyphs, based on the environment variables terminals set for child
-/// processes. This is the same approach used by lazygit and other terminal
-/// UIs; if it is wrong for your setup, override it with
-/// `[editor.file-tree] icons = true|false`.
+/// glyphs. Terminals do not expose their active font to child processes, so
+/// this infers support from the environment variables terminals set — the
+/// same approach used by lazygit and other terminal UIs — except on Termux,
+/// whose installed font file is inspected directly. If it is wrong for your
+/// setup, override it with `[editor.file-tree] icons = "nerdfont"` or
+/// `icons = "ascii"`.
 fn nerd_font_supported() -> bool {
     const TERM_PROGRAMS: &[&str] = &[
         "WezTerm",
@@ -369,7 +338,66 @@ fn nerd_font_supported() -> bool {
         return true;
     }
     // Windows Terminal.
-    std::env::var_os("WT_SESSION").is_some()
+    if std::env::var_os("WT_SESSION").is_some() {
+        return true;
+    }
+    // Termux sets neither `TERM_PROGRAM` nor a distinctive `TERM`; it is the
+    // one terminal whose active font can be detected directly, so inspect the
+    // font file it installs instead of guessing.
+    if std::env::var_os("TERMUX_VERSION").is_some()
+        || std::env::var("PREFIX").is_ok_and(|prefix| prefix.contains("com.termux"))
+    {
+        return termux_has_nerd_font();
+    }
+    false
+}
+
+/// Whether the font installed in Termux (`~/.termux/font.ttf`) is a Nerd
+/// Font. Termux renders this file as its terminal font; when it is absent the
+/// stock (non-Nerd) font is in use.
+fn termux_has_nerd_font() -> bool {
+    let Ok(home) = std::env::var("HOME") else {
+        return false;
+    };
+    termux_font_is_nerd(&Path::new(&home).join(".termux/font.ttf"))
+}
+
+/// Whether the TrueType font at `font_path` embeds a "Nerd" family name.
+fn termux_font_is_nerd(font_path: &Path) -> bool {
+    let Ok(bytes) = fs::read(font_path) else {
+        return false;
+    };
+    contains_nerd(&bytes)
+}
+
+/// Whether `bytes` (a font file) contains a case-insensitive "Nerd" marker in
+/// either UTF-16BE — how TrueType name tables encode family names — or plain
+/// ASCII.
+fn contains_nerd(bytes: &[u8]) -> bool {
+    const UTF16BE_NERD: &[u8] = b"\0N\0e\0r\0d";
+    if bytes
+        .windows(UTF16BE_NERD.len())
+        .any(|window| window.eq_ignore_ascii_case(UTF16BE_NERD))
+    {
+        return true;
+    }
+    const ASCII_NERD: &[u8] = b"Nerd";
+    bytes
+        .windows(ASCII_NERD.len())
+        .any(|window| window.eq_ignore_ascii_case(ASCII_NERD))
+}
+
+/// Shared, session-wide state of the file tree window. Both the file tree
+/// component and the editor viewport layout read it so they agree on whether
+/// the window is open and how many columns its content occupies; dragging the
+/// separator between the tree and the editor resizes it live.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct FileTreeState {
+    /// Whether the window is currently open.
+    pub open: bool,
+    /// Content width in columns (excluding the separator column). `0` falls
+    /// back to the `[editor.file-tree] width` configuration value.
+    pub width: u16,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -390,11 +418,16 @@ pub struct FileTreeConfig {
     pub git_global: bool,
     /// Enables reading `.git/info/exclude` files in the file tree. Defaults to true.
     pub git_exclude: bool,
+    /// Preferred width of the file tree content in columns (the separator
+    /// column excluded). Can be adjusted per session by dragging the
+    /// separator with the mouse. Defaults to 30.
+    pub width: u16,
     /// Whether to show VS Code / Zed style folder and file icons in the file
     /// tree. Icons use Nerd Font glyphs and require a Nerd Font (v3 or later)
-    /// in the terminal. Accepts `true`, `false` or `"auto"`; `"auto"` (the
-    /// default) enables icons when the terminal is likely to support Nerd
-    /// Fonts.
+    /// in the terminal. Accepts `"auto"` (the default), `"nerdfont"` or
+    /// `"ascii"`: `"auto"` enables icons when the terminal is likely to
+    /// support Nerd Fonts, `"nerdfont"` always renders them and `"ascii"`
+    /// falls back to ASCII expand/collapse arrows.
     pub icons: IconMode,
 }
 
@@ -408,6 +441,7 @@ impl Default for FileTreeConfig {
             git_ignore: true,
             git_global: true,
             git_exclude: true,
+            width: 30,
             icons: IconMode::Auto,
         }
     }
@@ -1475,6 +1509,11 @@ pub struct Editor {
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
     pub needs_redraw: bool,
+    /// State of the file tree window: whether it is open (which lays the
+    /// editor viewport out to its right) and the current content width in
+    /// columns, shared with the file tree component so the two always agree.
+    /// A width of `0` means the `[editor.file-tree] width` default is used.
+    pub file_tree_window: FileTreeState,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
     /// set to `Some(_)`. The value will be cleared after it's used.
@@ -1612,6 +1651,7 @@ impl Editor {
             exit_code: 0,
             config_events: unbounded_channel(),
             needs_redraw: false,
+            file_tree_window: FileTreeState::default(),
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
@@ -2853,20 +2893,33 @@ mod tests {
     use super::*;
 
     #[test]
-    fn icon_mode_accepts_bool_and_auto() {
+    fn icon_mode_accepts_ascii_nerdfont_and_auto() {
         #[derive(Deserialize)]
         struct IconField {
             icons: IconMode,
         }
-        let field: IconField = toml::from_str("icons = true").unwrap();
-        assert_eq!(field.icons, IconMode::Enabled(true));
-        let field: IconField = toml::from_str("icons = false").unwrap();
-        assert_eq!(field.icons, IconMode::Enabled(false));
+        let field: IconField = toml::from_str("icons = \"ascii\"").unwrap();
+        assert_eq!(field.icons, IconMode::Ascii);
+        let field: IconField = toml::from_str("icons = \"nerdfont\"").unwrap();
+        assert_eq!(field.icons, IconMode::NerdFont);
         let field: IconField = toml::from_str("icons = \"auto\"").unwrap();
         assert_eq!(field.icons, IconMode::Auto);
-        // Explicit overrides always win, regardless of the environment.
-        assert!(IconMode::Enabled(true).enabled());
-        assert!(!IconMode::Enabled(false).enabled());
+        // Explicit modes always win, regardless of the environment.
+        assert!(!IconMode::Ascii.enabled());
+        assert!(IconMode::NerdFont.enabled());
+        // An unknown value is rejected.
+        assert!(toml::from_str::<IconField>("icons = \"true\"").is_err());
+        assert!(toml::from_str::<IconField>("icons = true").is_err());
+    }
+
+    #[test]
+    fn termux_font_nerd_detection() {
+        // "Nerd" as it appears in a TrueType name table (UTF-16BE).
+        assert!(contains_nerd(b"head\0N\0e\0r\0d Font Complete tail"));
+        // A non-Nerd font name in the same encoding.
+        assert!(!contains_nerd(b"head\0H\0a\0c\0k Regular tail"));
+        // The stock Termux setup has no custom font file, so no icon support.
+        assert!(!termux_font_is_nerd(Path::new("/nonexistent/font.ttf")));
     }
 
     #[test]
@@ -2882,10 +2935,10 @@ mod tests {
         struct Section {
             file_tree: FileTreeConfig,
         }
-        let section: Section = toml::from_str("[file-tree]\nicons = true").unwrap();
-        assert_eq!(section.file_tree.icons, IconMode::Enabled(true));
-        let section: Section = toml::from_str("[file-tree]\nicons = false").unwrap();
-        assert_eq!(section.file_tree.icons, IconMode::Enabled(false));
+        let section: Section = toml::from_str("[file-tree]\nicons = \"ascii\"").unwrap();
+        assert_eq!(section.file_tree.icons, IconMode::Ascii);
+        let section: Section = toml::from_str("[file-tree]\nicons = \"nerdfont\"").unwrap();
+        assert_eq!(section.file_tree.icons, IconMode::NerdFont);
         let section: Section = toml::from_str("[file-tree]\nicons = \"auto\"").unwrap();
         assert_eq!(section.file_tree.icons, IconMode::Auto);
     }

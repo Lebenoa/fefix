@@ -1,10 +1,10 @@
-//! A VS Code / Zed style file tree sidebar.
+//! A VS Code / Zed style file tree window docked to the left of the editor.
 //!
-//! The tree is a modal layer that renders as a fixed-width sidebar on the left
-//! side of the screen, leaving the rest of the editor visible underneath. It
-//! lazily loads directory contents on expansion, remembers which directories
-//! are expanded while it is open and reveals (expands the ancestors of) the
-//! current buffer when opened.
+//! While open, the tree is a persistent window: the editor is laid out to its
+//! right and keeps working normally, with keyboard focus living in either the
+//! tree or the editor. The tree lazily loads directory contents on expansion,
+//! remembers which directories are expanded across sessions and reveals
+//! (expands the ancestors of) the current buffer when opened.
 
 use std::{
     cell::RefCell,
@@ -22,7 +22,7 @@ use helix_view::{
 use tui::buffer::Buffer as Surface;
 
 use crate::{
-    compositor::{self, Component, Compositor, Context, Event, EventResult},
+    compositor::{Component, Context, Event, EventResult},
     ctrl, key,
 };
 
@@ -64,12 +64,39 @@ const ICON_DATABASE: &str = "\u{f1c0}"; // nf-fa-database
 const ICON_IMAGE: &str = "\u{f03e}"; // nf-fa-image
 const ICON_VIDEO: &str = "\u{f008}"; // nf-fa-film
 const ICON_LICENSE: &str = "\u{eb12}"; // nf-cod-law
-/// Maximum width of the sidebar in columns.
-const MAX_WIDTH: u16 = 40;
+/// Smallest content width (in columns) the window can be resized to with the
+/// mouse.
+const MIN_WIDTH: u16 = 10;
 /// Number of columns of indentation per tree level.
 const INDENT: usize = 2;
 /// Number of rows scrolled per mouse wheel step.
 const WHEEL_SCROLL: isize = 3;
+
+/// The content width in columns the tree gets on `area`, given a preferred
+/// width: never wider than the terminal allows (two columns are kept for the
+/// editor and its gutter) and never wider than the preference.
+fn content_width(area: Rect, preferred: u16) -> u16 {
+    area.width.saturating_sub(2).min(preferred)
+}
+
+/// The preferred content width for the tree of `editor`: the session width if
+/// the user has resized it with the mouse, otherwise the configured default.
+fn preferred_width(editor: &Editor) -> u16 {
+    let width = editor.file_tree_window.width;
+    if width > 0 {
+        width
+    } else {
+        editor.config().file_tree.width
+    }
+}
+
+/// The total number of columns the file tree window occupies on `area` for
+/// `editor`, including the separator column between it and the editor. The
+/// editor viewport is laid out to the right of this many columns while the
+/// window is open.
+pub(crate) fn dock_width(editor: &Editor, area: Rect) -> u16 {
+    content_width(area, preferred_width(editor)).saturating_add(1)
+}
 
 // Expanded directories per tree root, shared across file tree sessions so
 // that expansion state survives closing and reopening the tree. Kept in
@@ -363,20 +390,31 @@ fn read_children(dir: &Path, config: &FileTreeConfig) -> Vec<TreeEntry> {
         .collect()
 }
 
-/// A VS Code / Zed style file tree sidebar component.
+/// A VS Code / Zed style file tree window docked to the left of the editor.
 pub struct FileTree {
     tree: Tree,
     /// First visible row, for scrolling.
     offset: usize,
-    /// The area the tree was last rendered into, used for mouse handling.
+    /// The area the tree content was last rendered into, used for mouse
+    /// handling. Covers the tree columns only, not the separator.
     area: Rect,
     /// Whether to render Nerd Font folder/file icons instead of ASCII arrows.
     icons: bool,
+    /// Whether keyboard input is currently routed to the tree rather than to
+    /// the editor. While `false` the window stays visible but ignores keys,
+    /// so the editor underneath works normally.
+    focused: bool,
+    /// The (column, content width) pair captured when a separator drag
+    /// started, or `None` when not resizing.
+    resizing: Option<(u16, u16)>,
+    /// The widest content the window may grow to: the terminal width minus the
+    /// columns reserved for the separator and the editor. Refreshed on render.
+    max_width: u16,
 }
 
 impl FileTree {
-    /// Create a new file tree rooted at `root`, revealing the current buffer
-    /// if it is located under the root.
+    /// Create a new file tree window rooted at `root`, revealing the current
+    /// buffer if it is located under the root and taking keyboard focus.
     pub fn new(root: PathBuf, editor: &Editor) -> Self {
         let config = editor.config().file_tree.clone();
         let icons = config.icons.enabled();
@@ -390,6 +428,9 @@ impl FileTree {
             offset: 0,
             area: Rect::default(),
             icons,
+            focused: true,
+            resizing: None,
+            max_width: 0,
         }
     }
 
@@ -434,7 +475,7 @@ impl FileTree {
     }
 
     /// Open the selected entry: expand it if it is a directory, otherwise open
-    /// the file and close the tree.
+    /// the file and hand focus back to the editor. The window stays open.
     fn open_selected(&mut self, ctx: &mut Context, action: Action) -> EventResult {
         let Some(path) = self.tree.selected_path() else {
             return EventResult::Consumed(None);
@@ -452,25 +493,48 @@ impl FileTree {
             ctx.editor.set_error(err);
             return EventResult::Consumed(None);
         }
-        close_callback()
+        self.focused = false;
+        EventResult::Consumed(None)
     }
 
-    fn handle_mouse(&mut self, event: &MouseEvent) -> EventResult {
+    fn handle_mouse(&mut self, event: &MouseEvent, ctx: &mut Context) -> EventResult {
         let MouseEvent {
             kind, row, column, ..
         } = *event;
+        let area = self.area;
+        // The separator column doubles as the resize handle. Only events over
+        // the tree's own columns belong to the tree; anything else falls
+        // through to the editor underneath.
+        let separator = area.right();
+        let vertical = row >= area.top() && row < area.bottom();
+        let inside = vertical && column >= area.left() && column < separator;
         match kind {
-            MouseEventKind::ScrollDown => self.move_selection(WHEEL_SCROLL),
-            MouseEventKind::ScrollUp => self.move_selection(-WHEEL_SCROLL),
+            MouseEventKind::ScrollDown | MouseEventKind::ScrollUp => {
+                self.resizing = None;
+                if !inside {
+                    // Scrolling over the editor hands focus to it as well.
+                    self.focused = false;
+                    return EventResult::Ignored(None);
+                }
+                if kind == MouseEventKind::ScrollDown {
+                    self.move_selection(WHEEL_SCROLL);
+                } else {
+                    self.move_selection(-WHEEL_SCROLL);
+                }
+            }
             MouseEventKind::Down(MouseButton::Left) => {
-                let area = self.area;
-                if row < area.top()
-                    || row >= area.bottom()
-                    || column < area.left()
-                    || column >= area.right()
-                {
+                if vertical && column == separator {
+                    // Start resizing the window from its separator.
+                    self.resizing = Some((column, area.width));
                     return EventResult::Consumed(None);
                 }
+                self.resizing = None;
+                if !inside {
+                    // Clicking outside the tree hands focus to the editor.
+                    self.focused = false;
+                    return EventResult::Ignored(None);
+                }
+                self.focused = true;
                 let index = self.offset + (row - area.top()) as usize;
                 let hit = self
                     .tree
@@ -478,16 +542,35 @@ impl FileTree {
                     .get(index)
                     .map(|(entry, depth)| (entry.path.clone(), entry.is_dir, *depth));
                 if let Some((path, is_dir, depth)) = hit {
-                    // Clicking on the expand/collapse arrow toggles the directory.
-                    let arrow_column = area.left() + (depth * INDENT) as u16;
-                    if is_dir && column == arrow_column {
+                    // Clicking on the expand/collapse symbol toggles the directory.
+                    let symbol_column = area.left() + (depth * INDENT) as u16;
+                    if is_dir && column == symbol_column {
                         self.tree.toggle(&path);
                     } else {
                         self.tree.select(&path);
                     }
                 }
             }
-            _ => {}
+            MouseEventKind::Drag(MouseButton::Left) => {
+                if let Some((start_column, start_width)) = self.resizing {
+                    let delta = i32::from(column) - i32::from(start_column);
+                    let width = (i32::from(start_width) + delta)
+                        .clamp(MIN_WIDTH as i32, i32::from(self.max_width))
+                        as u16;
+                    ctx.editor.file_tree_window.width = width;
+                    return EventResult::Consumed(None);
+                }
+                if inside {
+                    return EventResult::Consumed(None);
+                }
+                return EventResult::Ignored(None);
+            }
+            _ => {
+                self.resizing = None;
+                if !inside {
+                    return EventResult::Ignored(None);
+                }
+            }
         }
         EventResult::Consumed(None)
     }
@@ -561,20 +644,19 @@ fn symbol_for(entry: &TreeEntry, icons: bool) -> &'static str {
     }
 }
 
-fn close_callback() -> EventResult {
-    let callback: compositor::Callback = Box::new(|compositor: &mut Compositor, _ctx| {
-        compositor.pop();
-    });
-    EventResult::Consumed(Some(callback))
-}
-
 impl Component for FileTree {
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
+        if let Event::Mouse(event) = event {
+            return self.handle_mouse(event, ctx);
+        }
+        // Without keyboard focus the window sits in the background: every
+        // other input falls through to the editor underneath.
+        if !self.focused {
+            return EventResult::Ignored(None);
+        }
         let key_event = match event {
             Event::Key(event) => *event,
-            // The file tree is modal, so consume all other input events.
             Event::Paste(..) | Event::Resize(..) => return EventResult::Consumed(None),
-            Event::Mouse(event) => return self.handle_mouse(event),
             _ => return EventResult::Ignored(None),
         };
 
@@ -617,7 +699,9 @@ impl Component for FileTree {
                 return self.open_selected(ctx, Action::Replace);
             }
             key!(Esc) | ctrl!('c') => {
-                return close_callback();
+                // Hand focus back to the editor; the window stays open.
+                self.focused = false;
+                return EventResult::Ignored(None);
             }
             key!('r') => {
                 self.tree.refresh(&self.tree.selected.clone());
@@ -635,9 +719,11 @@ impl Component for FileTree {
         let selected_style = theme.get("ui.cursorline.primary");
         let window_style = theme.get("ui.window");
 
-        // Leave the statusline and commandline rows to the editor underneath.
-        let area = area.clip_bottom(2);
-        let width = area.width.min(MAX_WIDTH);
+        let width = content_width(area, preferred_width(ctx.editor));
+        self.max_width = area.width.saturating_sub(2);
+        // The window spans the whole height of the screen area; the editor is
+        // laid out to its right, so the editor's statusline rows never
+        // overlap it.
         let tree_area = Rect {
             x: area.x,
             y: area.y,
@@ -645,15 +731,29 @@ impl Component for FileTree {
             height: area.height,
         };
         self.area = tree_area;
+        if width == 0 || tree_area.height == 0 {
+            return;
+        }
 
+        // Clear the whole window so no stale cells from the editor (or from
+        // an earlier wider layout) remain, then draw the separator column.
         surface.clear_with(tree_area, background);
+        if tree_area.right() < area.right() {
+            for y in tree_area.top()..tree_area.bottom() {
+                surface[(tree_area.right(), y)]
+                    .set_symbol(tui::symbols::line::VERTICAL)
+                    .set_style(window_style);
+            }
+        }
 
-        let visible = self.tree.visible();
-        let selected_index = self.tree.selected_index();
-        let height = tree_area.height as usize;
+        // Rows above the editor's statusline / commandline rows.
+        let height = tree_area.height.saturating_sub(2) as usize;
         if height == 0 {
             return;
         }
+
+        let visible = self.tree.visible();
+        let selected_index = self.tree.selected_index();
 
         // Scroll to keep the selection visible.
         if selected_index < self.offset {
@@ -681,21 +781,14 @@ impl Component for FileTree {
             } else {
                 file_style
             };
-            let style = if row == selected_index {
+            // Only the focused window highlights its selection; unfocused it
+            // stays in the background like an inactive split.
+            let style = if self.focused && row == selected_index {
                 base_style.patch(selected_style)
             } else {
                 base_style
             };
             surface.set_stringn(tree_area.x, y, &line, tree_area.width as usize, style);
-        }
-
-        // Draw a vertical separator between the tree and the editor.
-        if tree_area.right() < area.right() {
-            for y in tree_area.top()..tree_area.bottom() {
-                surface[(tree_area.right(), y)]
-                    .set_symbol(tui::symbols::line::VERTICAL)
-                    .set_style(window_style);
-            }
         }
     }
 
@@ -771,6 +864,17 @@ mod tests {
                     .to_string()
             })
             .collect()
+    }
+
+    #[test]
+    fn content_width_fits_preference_and_screen() {
+        // A wide terminal: the preferred width decides.
+        assert_eq!(content_width(Rect::new(0, 0, 200, 50), 30), 30);
+        // A narrow terminal: the tree gives way instead of hiding the editor.
+        assert_eq!(content_width(Rect::new(0, 0, 30, 50), 30), 28);
+        assert_eq!(content_width(Rect::new(0, 0, 30, 50), 40), 28);
+        // The separator column sits between the tree content and the editor.
+        assert_eq!(content_width(Rect::new(0, 0, 200, 50), 40) + 1, 41);
     }
 
     #[test]

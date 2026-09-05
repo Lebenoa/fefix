@@ -24,9 +24,10 @@ Packaging:
 
 Features:
 
-* Add a `file_tree` command which opens a VS Code / Zed style file tree sidebar. Directories expand and collapse lazily (`<right>`/`<left>`, `l`/`h`, or `enter` to toggle), files open with `enter`, and opening the tree reveals the current buffer. Bound to `<space>t` and `<space>T` for the current buffer's directory.
-* The file tree shows VS Code / Zed style icons (Nerd Font glyphs) when the terminal is likely to support Nerd Fonts: folders get an open/closed folder glyph and files a type-specific glyph (rust, markdown, git, etc.). Control with the new `[editor.file-tree] icons` option (`true`, `false`, or `"auto"`).
+* Add a `file_tree` command which opens a VS Code / Zed style file tree window docked to the left of the editor. It is a persistent window rather than a modal overlay: `enter` opens a file and moves focus to the editor while the window stays open, and `esc` moves focus from the tree back to the editor. Directories expand and collapse lazily (`<right>`/`<left>`, `l`/`h`, or `enter` to toggle) and opening the tree reveals the current buffer. `<space>t` toggles the window at the workspace root; `<space>T` opens it at the current buffer's directory.
+* The file tree shows VS Code / Zed style icons (Nerd Font glyphs) when the terminal is likely to support Nerd Fonts: folders get an open/closed folder glyph and files a type-specific glyph (rust, markdown, git, etc.). Control with the new `[editor.file-tree] icons` option (`"auto"`, `"nerdfont"`, or `"ascii"`). On Termux, `"auto"` inspects the font installed at `~/.termux/font.ttf` to decide.
 * The file tree remembers which directories are expanded across sessions with the same root, so reopening the tree restores your navigation.
+* The file tree window's width is configurable with the `[editor.file-tree] width` option (default 30 columns) and can be resized live by dragging the separator between the tree and the editor with the mouse.
 
 # 25.07.1 (2025-07-18)
 

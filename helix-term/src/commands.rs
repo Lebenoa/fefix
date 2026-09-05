@@ -406,7 +406,7 @@ impl MappableCommand {
         file_explorer, "Open file explorer in workspace root",
         file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
         file_explorer_in_current_directory, "Open file explorer at current working directory",
-        file_tree, "Open file tree in workspace root",
+        file_tree, "Toggle file tree in workspace root",
         file_tree_in_current_buffer_directory, "Open file tree at current buffer's directory",
         file_tree_in_current_directory, "Open file tree at current working directory",
         close_file_tree, "Close file tree",
@@ -3270,17 +3270,36 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 }
 
+/// Open (or re-root) the file tree window at `root`.
+fn open_file_tree(cx: &mut Context, root: PathBuf) {
+    cx.editor.file_tree_window.open = true;
+    cx.replace_or_push_layer(
+        ui::file_tree::ID,
+        ui::file_tree::FileTree::new(root, cx.editor),
+    );
+}
+
 fn file_tree(cx: &mut Context) {
+    // `file_tree` toggles the window: if it is already open it is closed,
+    // otherwise it is opened at the workspace root, revealing the current
+    // buffer.
+    if cx.editor.file_tree_window.open {
+        cx.callback
+            .push(Box::new(|compositor: &mut Compositor, ctx| {
+                compositor.remove(ui::file_tree::ID);
+                ctx.editor.file_tree_window.open = false;
+                // The editor takes over the docked columns again; clear the
+                // terminal so no stale tree cells survive in blank areas.
+                compositor.need_full_redraw();
+            }));
+        return;
+    }
     let root = find_workspace().0;
     if !root.exists() {
         cx.editor.set_error("Workspace directory does not exist");
         return;
     }
-
-    cx.replace_or_push_layer(
-        ui::file_tree::ID,
-        ui::file_tree::FileTree::new(root, cx.editor),
-    );
+    open_file_tree(cx, root);
 }
 
 fn file_tree_in_current_buffer_directory(cx: &mut Context) {
@@ -3305,10 +3324,7 @@ fn file_tree_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
-    cx.replace_or_push_layer(
-        ui::file_tree::ID,
-        ui::file_tree::FileTree::new(path, cx.editor),
-    );
+    open_file_tree(cx, path);
 }
 
 fn file_tree_in_current_directory(cx: &mut Context) {
@@ -3319,16 +3335,17 @@ fn file_tree_in_current_directory(cx: &mut Context) {
         return;
     }
 
-    cx.replace_or_push_layer(
-        ui::file_tree::ID,
-        ui::file_tree::FileTree::new(cwd, cx.editor),
-    );
+    open_file_tree(cx, cwd);
 }
-
 fn close_file_tree(cx: &mut Context) {
-    cx.callback.push(Box::new(|compositor: &mut Compositor, _| {
-        compositor.remove(ui::file_tree::ID);
-    }));
+    cx.callback
+        .push(Box::new(|compositor: &mut Compositor, ctx| {
+            compositor.remove(ui::file_tree::ID);
+            ctx.editor.file_tree_window.open = false;
+            // The editor takes over the docked columns again; clear the terminal
+            // so no stale tree cells survive in blank areas.
+            compositor.need_full_redraw();
+        }));
 }
 
 struct PathStyleConfig {

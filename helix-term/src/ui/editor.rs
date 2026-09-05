@@ -1616,6 +1616,15 @@ impl Component for EditorView {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // When the file tree window is open, lay the editor out to its right
+        // rather than underneath it. The file tree layer paints the docked
+        // region itself.
+        let mut area = area;
+        if cx.editor.file_tree_window.open {
+            let dock = crate::ui::file_tree::dock_width(cx.editor, area);
+            area.x += dock;
+            area.width = area.width.saturating_sub(dock);
+        }
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
