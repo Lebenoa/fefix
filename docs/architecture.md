@@ -13,7 +13,7 @@
 | helix-tui       | TUI primitives, forked from tui-rs, inspired by Cursive          |
 
 
-This document contains a high-level overview of Helix internals.
+This document contains a high-level overview of fefix internals.
 
 > NOTE: Use `cargo doc --open` for API documentation as well as dependency
 > documentation.

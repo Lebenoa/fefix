@@ -22,6 +22,8 @@ Packaging:
 
 # Unreleased
 
+fefix is a fork of [Helix](https://github.com/helix-editor/helix). Entries below cover this fork's changes; older sections are inherited upstream release notes.
+
 Features:
 
 * Add a `file_tree` command which opens a VS Code / Zed style file tree window docked to the left of the editor. It is a persistent window rather than a modal overlay: `enter` opens a file and moves focus to the editor while the window stays open, and `esc` moves focus from the tree back to the editor. Directories expand and collapse lazily (`<right>`/`<left>`, `l`/`h`, or `enter` to toggle) and opening the tree reveals the current buffer. `<space>t` toggles the window at the workspace root; `<space>T` opens it at the current buffer's directory.

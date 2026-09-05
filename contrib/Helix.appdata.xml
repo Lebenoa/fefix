@@ -3,7 +3,7 @@
   <id>com.helix_editor.Helix</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MPL-2.0</project_license>
-  <name>Helix</name>
+  <name>fefix</name>
   <summary>A post-modern text editor</summary>
   <summary xml:lang="ar">مُحَرِّرُ نُصُوصٍ سَابِقٌ لِعَهدِه</summary>
   <developer id="com.helix_editor">
@@ -12,7 +12,7 @@
 
   <description>
     <p>
-      Helix is a terminal-based text editor inspired by Kakoune / Neovim and written in Rust.
+      fefix is a terminal-based text editor inspired by Kakoune / Neovim and written in Rust.
     </p>
     <p xml:lang="ar">
       مُحَرِّرُ نُصُوصٍ يَعمَلُ فِي الطَّرَفِيَّة، مُستَلهَمٌ مِن Kakoune وَ Neovim وَمَكتُوبٌ بِلُغَةِ رَست البَرمَجِيَّة.
@@ -33,7 +33,7 @@
 
   <screenshots>
     <screenshot type="default">
-      <caption>Helix with default theme</caption>
+      <caption>fefix with default theme</caption>
       <image>https://github.com/helix-editor/helix/raw/d4565b4404cabc522bd60822abd374755581d751/screenshot.png</image>
     </screenshot>
   </screenshots>

@@ -1,6 +1,6 @@
 ## Key remapping
 
-Helix currently supports one-way key remapping through a simple TOML configuration
+fefix currently supports one-way key remapping through a simple TOML configuration
 file. (More powerful solutions such as rebinding via commands will be
 available in the future).
 
@@ -22,7 +22,7 @@ There are three kinds of commands that can be used in keymaps:
   command sequences are executed. Modifier keys (e.g. Alt+o) can be used
   like `"<A-o>"`, e.g. `"@miw<A-o>"`
 
-To remap keys, create a `config.toml` file in your `helix` configuration
+To remap keys, create a `config.toml` file in your `fefix` configuration
 directory (default `~/.config/helix` on Linux systems) with a structure like
 this:
 
@@ -33,7 +33,7 @@ this:
 # At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
 C-s = ":w" # Maps Ctrl-s to the typable command :w which is an alias for :write (save file)
-C-o = ":open ~/.config/helix/config.toml" # Maps Ctrl-o to opening of the helix config file
+C-o = ":open ~/.config/helix/config.toml" # Maps Ctrl-o to opening of the fefix config file
 a = "move_char_left" # Maps the 'a' key to the move_char_left command
 w = "move_line_up" # Maps the 'w' key move_line_up
 "C-S-esc" = "extend_line" # Maps Ctrl-Shift-Escape to extend_line

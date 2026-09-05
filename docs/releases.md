@@ -1,6 +1,6 @@
 ## Checklist
 
-Helix releases are versioned in the Calendar Versioning scheme:
+fefix releases are versioned in the Calendar Versioning scheme:
 `YY.0M(.MICRO)`, for example, `22.05` for May of 2022, or in a patch release,
 `22.05.1`. In these instructions we'll use `<tag>` as a placeholder for the tag
 being published.

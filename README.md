@@ -4,15 +4,14 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="logo_light.svg">
-  <img alt="Helix" height="128" src="logo_light.svg">
+  <img alt="fefix" height="128" src="logo_light.svg">
 </picture>
 </h1>
 
-[![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
-[![GitHub Release](https://img.shields.io/github/v/release/helix-editor/helix)](https://github.com/helix-editor/helix/releases/latest)
-[![Documentation](https://shields.io/badge/-documentation-452859)](https://docs.helix-editor.com/)
-[![GitHub contributors](https://img.shields.io/github/contributors/helix-editor/helix)](https://github.com/helix-editor/helix/graphs/contributors)
-[![Matrix Space](https://img.shields.io/matrix/helix-community:matrix.org)](https://matrix.to/#/#helix-community:matrix.org)
+[![Build status](https://github.com/Lebenoa/fefix/actions/workflows/build.yml/badge.svg)](https://github.com/Lebenoa/fefix/actions)
+[![GitHub Release](https://img.shields.io/github/v/release/Lebenoa/fefix)](https://github.com/Lebenoa/fefix/releases/latest)
+[![Documentation](https://shields.io/badge/-documentation-452859)](https://github.com/Lebenoa/fefix/tree/master/book#readme)
+[![GitHub contributors](https://img.shields.io/github/contributors/Lebenoa/fefix)](https://github.com/Lebenoa/fefix/graphs/contributors)
 
 </div>
 
@@ -23,10 +22,9 @@ A [Kakoune](https://github.com/mawww/kakoune) / [Neovim](https://github.com/neov
 The editing model is very heavily based on Kakoune; during development I found
 myself agreeing with most of Kakoune's design decisions.
 
-For more information, see the [website](https://helix-editor.com) or
-[documentation](https://docs.helix-editor.com/).
+For more information, see the [documentation](https://github.com/Lebenoa/fefix/tree/master/book#readme).
 
-All shortcuts/keymaps can be found [in the documentation on the website](https://docs.helix-editor.com/keymap.html).
+All shortcuts/keymaps can be found [in the book](./book/src/keymap.md).
 
 # Differences from upstream
 
@@ -74,9 +72,7 @@ Note: Only certain languages have indentation definitions at the moment. Check
 
 # Installation
 
-[Installation documentation](https://docs.helix-editor.com/install.html).
-
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg?exclude_unsupported=1)](https://repology.org/project/helix-editor/versions)
+[Installation documentation](./book/src/install.md).
 
 # Contributing
 
@@ -84,9 +80,9 @@ Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
 
 # Getting help
 
-Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
+Your question might already be answered on the upstream [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
 
-Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
+Discuss the editor on the upstream community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (join `#helix-editor:matrix.org` if your client doesn't support Matrix Spaces yet).
 
 # Credits
 
