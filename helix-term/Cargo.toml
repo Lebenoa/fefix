@@ -41,6 +41,7 @@ name = "fx"
 path = "src/main.rs"
 
 [dependencies]
+notify.workspace = true
 helix-stdx = { path = "../helix-stdx" }
 helix-core = { path = "../helix-core" }
 helix-event = { path = "../helix-event" }

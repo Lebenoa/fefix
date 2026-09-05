@@ -510,6 +510,9 @@ pub struct Config {
     /// Defaults to enabled with a trigger length of 7.
     pub word_completion: WordCompletion,
     /// Automatic formatting on save. Defaults to true.
+    /// Reload buffers from disk automatically when their file changes externally.
+    /// Buffers with unsaved changes are never touched. Defaults to true.
+    pub auto_reload: bool,
     pub auto_format: bool,
     /// Default register used for yank/paste. Defaults to '"'
     pub default_yank_register: char,
@@ -1375,6 +1378,7 @@ impl Default for Config {
             auto_completion: true,
             path_completion: true,
             word_completion: WordCompletion::default(),
+            auto_reload: true,
             auto_format: true,
             default_yank_register: '"',
             auto_save: AutoSave::default(),
