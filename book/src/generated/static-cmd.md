@@ -103,6 +103,10 @@
 | `file_explorer` | Open file explorer in workspace root | normal: `` <space>e ``, select: `` <space>e `` |
 | `file_explorer_in_current_buffer_directory` | Open file explorer at current buffer's directory | normal: `` <space>. ``, select: `` <space>. `` |
 | `file_explorer_in_current_directory` | Open file explorer at current working directory |  |
+| `file_tree` | Open file tree in workspace root | normal: `` <space>t ``, select: `` <space>t `` |
+| `file_tree_in_current_buffer_directory` | Open file tree at current buffer's directory | normal: `` <space>T ``, select: `` <space>T `` |
+| `file_tree_in_current_directory` | Open file tree at current working directory |  |
+| `close_file_tree` | Close file tree |  |
 | `code_action` | Perform code action | normal: `` <space>a ``, select: `` <space>a `` |
 | `buffer_picker` | Open buffer picker | normal: `` <space>b ``, select: `` <space>b `` |
 | `jumplist_picker` | Open jumplist picker | normal: `` <space>j ``, select: `` <space>j `` |

@@ -13,3 +13,7 @@ You can insert the contents of a [register](./registers.md) using `Ctrl-r` follo
 ### File explorer
 
 `Space-e` opens an interactive file explorer for browsing and opening files, rooted at the workspace; `Space-.` opens one rooted at the current buffer's directory. Unlike the file picker, the explorer does not ignore most files by default; its ignore behaviour is configured separately in the [`[editor.file-explorer]`](./editor.md#editorfile-explorer-section) section.
+
+### File tree
+
+`Space-t` opens a VS Code / Zed style file tree sidebar rooted at the workspace; `Space-T` opens one rooted at the current buffer's directory. Unlike the file explorer, the whole directory hierarchy is shown at once and directories expand and collapse in place. `Right`/`l` expands a directory (or enters its first child if already expanded), `Left`/`h` collapses it or moves to its parent, `Enter` opens a file (or toggles a directory) and closes the tree, `Esc` closes it, and `r` refreshes the selected directory. Opening the tree reveals the current buffer if it is under the root. Directories and files get VS Code / Zed style icons when the terminal is detected as Nerd Font capable (folders show an open/closed glyph and files a type-specific glyph); see the `icons` option in the [`[editor.file-tree]`](./editor.md#editorfile-tree-section) section. Expanded/collapsed directories are remembered across tree sessions, and ignore behaviour is configured there too.

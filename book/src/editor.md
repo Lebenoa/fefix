@@ -7,6 +7,7 @@
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
 - [`[editor.file-explorer]` Section](#editorfile-explorer-section)
+- [`[editor.file-tree]` Section](#editorfile-tree-section)
 - [`[editor.buffer-picker]` Section](#editorbuffer-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
 - [`[editor.auto-save]` Section](#editorauto-save-section)
@@ -250,6 +251,21 @@ Note that the ignore files consulted by the file explorer when `ignore` is set t
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `false`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `false`
 |`flatten-dirs` | Enables flattening single child directories | `true`
+
+### `[editor.file-tree]` Section
+
+Configure the file tree sidebar (see the `file_tree` command). Like the file explorer, it uses the `ignore` crate, but unlike the file explorer its defaults hide hidden files and honor ignore files, similar to the file picker, so that the tree stays focused on project files.
+
+| Key | Description | Default |
+|--|--|---------|
+|`hidden` | Enables ignoring hidden files | `true`
+|`follow-symlinks` | Follow symlinks instead of ignoring them | `false`
+|`parents` | Enables reading ignore files from parent directories | `true`
+|`ignore` | Enables reading `.ignore` files | `true`
+|`git-ignore` | Enables reading `.gitignore` files | `true`
+|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
+|`git-exclude` | Enables reading `.git/info/exclude` files | `true`
+|`icons` | Show VS Code / Zed style folder and file icons. Folders get an open/closed folder glyph and files get a type-specific glyph (rust, markdown, git, etc., falling back to a generic file glyph). Icons use Nerd Font glyphs (v3 or later) and fall back to ASCII arrows when disabled. Accepts `true`, `false` or `"auto"`; `"auto"` enables icons when the terminal is likely to support Nerd Fonts (detected from `TERM_PROGRAM`/`TERM` and friends) | `"auto"`
 
 ### `[editor.buffer-picker]` Section
 

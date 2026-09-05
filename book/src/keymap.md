@@ -297,6 +297,8 @@ This layer is a kludge of mappings, mostly pickers.
 | `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`         |
 | `e`     | Open file explorer at workspace root                                     | `file_explorer`                            |
 | `.`     | Open file explorer at current buffer's directory                        | `file_explorer_in_current_buffer_directory`|
+| `t`     | Open file tree at workspace root                                         | `file_tree`                                |
+| `T`     | Open file tree at current buffer's directory                            | `file_tree_in_current_buffer_directory`    |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                            |
 | `j`     | Open jumplist picker                                                    | `jumplist_picker`                          |
 | `g`     | Open changed file picker                                                | `changed_file_picker`                      |

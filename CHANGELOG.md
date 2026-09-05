@@ -20,6 +20,14 @@ Updated languages and queries:
 Packaging:
 -->
 
+# Unreleased
+
+Features:
+
+* Add a `file_tree` command which opens a VS Code / Zed style file tree sidebar. Directories expand and collapse lazily (`<right>`/`<left>`, `l`/`h`, or `enter` to toggle), files open with `enter`, and opening the tree reveals the current buffer. Bound to `<space>t` and `<space>T` for the current buffer's directory.
+* The file tree shows VS Code / Zed style icons (Nerd Font glyphs) when the terminal is likely to support Nerd Fonts: folders get an open/closed folder glyph and files a type-specific glyph (rust, markdown, git, etc.). Control with the new `[editor.file-tree] icons` option (`true`, `false`, or `"auto"`).
+* The file tree remembers which directories are expanded across sessions with the same root, so reopening the tree restores your navigation.
+
 # 25.07.1 (2025-07-18)
 
 This is a patch release which lowers the GLIBC requirements of the release artifacts published to GitHub ([#13983](https://github.com/helix-editor/helix/pull/13983))

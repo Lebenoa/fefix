@@ -266,6 +266,153 @@ impl Default for FileExplorerConfig {
     }
 }
 
+/// Whether to show VS Code / Zed style icons in the file tree. The icons are
+/// rendered with Nerd Font glyphs and require a Nerd Font (v3 or later) in
+/// the terminal. `Auto` (the default) enables icons when the terminal is
+/// likely to support Nerd Fonts, detected from its environment; set `true` or
+/// `false` to override the detection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum IconMode {
+    /// Enable icons when the terminal is likely to support Nerd Fonts.
+    Auto,
+    /// Explicitly enable or disable icons.
+    Enabled(bool),
+}
+
+impl<'de> Deserialize<'de> for IconMode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct IconModeVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for IconModeVisitor {
+            type Value = IconMode;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a boolean or the string \"auto\"")
+            }
+
+            fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(IconMode::Enabled(value))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                if value == "auto" {
+                    Ok(IconMode::Auto)
+                } else {
+                    Err(serde::de::Error::invalid_value(
+                        serde::de::Unexpected::Str(value),
+                        &self,
+                    ))
+                }
+            }
+        }
+
+        deserializer.deserialize_any(IconModeVisitor)
+    }
+}
+
+impl Default for IconMode {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+impl IconMode {
+    /// Whether icons are effectively enabled, resolving `Auto` against the
+    /// terminal environment.
+    pub fn enabled(self) -> bool {
+        match self {
+            IconMode::Enabled(enabled) => enabled,
+            IconMode::Auto => nerd_font_supported(),
+        }
+    }
+}
+
+/// A heuristic for whether the running terminal is likely to render Nerd Font
+/// glyphs, based on the environment variables terminals set for child
+/// processes. This is the same approach used by lazygit and other terminal
+/// UIs; if it is wrong for your setup, override it with
+/// `[editor.file-tree] icons = true|false`.
+fn nerd_font_supported() -> bool {
+    const TERM_PROGRAMS: &[&str] = &[
+        "WezTerm",
+        "iTerm.app",
+        "vscode",
+        "Hyper",
+        "Tabby",
+        "WarpTerminal",
+        "ghostty",
+        "contour",
+        "rio",
+    ];
+    if let Ok(program) = std::env::var("TERM_PROGRAM") {
+        if TERM_PROGRAMS.contains(&program.as_str()) {
+            return true;
+        }
+    }
+    // kitty, foot and ghostty advertise themselves through `TERM`.
+    if let Ok(term) = std::env::var("TERM") {
+        if term.contains("kitty") || term.contains("foot") || term.contains("ghostty") {
+            return true;
+        }
+    }
+    // Alacritty sets no `TERM_PROGRAM`; its window ID variable is unambiguous.
+    if std::env::var_os("ALACRITTY_WINDOW_ID").is_some() {
+        return true;
+    }
+    // Windows Terminal.
+    std::env::var_os("WT_SESSION").is_some()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct FileTreeConfig {
+    /// Enables hiding hidden files in the file tree. Defaults to true.
+    pub hidden: bool,
+    /// Enables following symlinks in the file tree. Defaults to false.
+    pub follow_symlinks: bool,
+    /// Enables reading ignore files from parent directories. Defaults to true.
+    pub parents: bool,
+    /// Enables reading `.ignore` files in the file tree. Defaults to true.
+    pub ignore: bool,
+    /// Enables reading `.gitignore` files in the file tree. Defaults to true.
+    pub git_ignore: bool,
+    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
+    /// Defaults to true.
+    pub git_global: bool,
+    /// Enables reading `.git/info/exclude` files in the file tree. Defaults to true.
+    pub git_exclude: bool,
+    /// Whether to show VS Code / Zed style folder and file icons in the file
+    /// tree. Icons use Nerd Font glyphs and require a Nerd Font (v3 or later)
+    /// in the terminal. Accepts `true`, `false` or `"auto"`; `"auto"` (the
+    /// default) enables icons when the terminal is likely to support Nerd
+    /// Fonts.
+    pub icons: IconMode,
+}
+
+impl Default for FileTreeConfig {
+    fn default() -> Self {
+        Self {
+            hidden: true,
+            follow_symlinks: false,
+            parents: true,
+            ignore: true,
+            git_ignore: true,
+            git_global: true,
+            git_exclude: true,
+            icons: IconMode::Auto,
+        }
+    }
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -366,6 +513,7 @@ pub struct Config {
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
     pub file_explorer: FileExplorerConfig,
+    pub file_tree: FileTreeConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
@@ -1203,6 +1351,7 @@ impl Default for Config {
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             file_explorer: FileExplorerConfig::default(),
+            file_tree: FileTreeConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
@@ -2696,5 +2845,48 @@ impl CursorCache {
 
     pub fn reset(&self) {
         self.0.set(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn icon_mode_accepts_bool_and_auto() {
+        #[derive(Deserialize)]
+        struct IconField {
+            icons: IconMode,
+        }
+        let field: IconField = toml::from_str("icons = true").unwrap();
+        assert_eq!(field.icons, IconMode::Enabled(true));
+        let field: IconField = toml::from_str("icons = false").unwrap();
+        assert_eq!(field.icons, IconMode::Enabled(false));
+        let field: IconField = toml::from_str("icons = \"auto\"").unwrap();
+        assert_eq!(field.icons, IconMode::Auto);
+        // Explicit overrides always win, regardless of the environment.
+        assert!(IconMode::Enabled(true).enabled());
+        assert!(!IconMode::Enabled(false).enabled());
+    }
+
+    #[test]
+    fn file_tree_config_defaults_to_auto_icons() {
+        let config: FileTreeConfig = FileTreeConfig::default();
+        assert_eq!(config.icons, IconMode::Auto);
+    }
+
+    #[test]
+    fn file_tree_icons_field_deserializes() {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "kebab-case")]
+        struct Section {
+            file_tree: FileTreeConfig,
+        }
+        let section: Section = toml::from_str("[file-tree]\nicons = true").unwrap();
+        assert_eq!(section.file_tree.icons, IconMode::Enabled(true));
+        let section: Section = toml::from_str("[file-tree]\nicons = false").unwrap();
+        assert_eq!(section.file_tree.icons, IconMode::Enabled(false));
+        let section: Section = toml::from_str("[file-tree]\nicons = \"auto\"").unwrap();
+        assert_eq!(section.file_tree.icons, IconMode::Auto);
     }
 }

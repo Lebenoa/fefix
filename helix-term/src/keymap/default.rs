@@ -227,6 +227,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "F" => file_picker_in_current_directory,
             "e" => file_explorer,
             "." => file_explorer_in_current_buffer_directory,
+            "t" => file_tree,
+            "T" => file_tree_in_current_buffer_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
             "s" => lsp_or_syntax_symbol_picker,
