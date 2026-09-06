@@ -979,6 +979,28 @@ async fn file_explorer_toggles_tree_in_tree_mode() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn q_closes_tree_while_focused() -> anyhow::Result<()> {
+    // With the tree window focused, `q` closes it outright.
+    let mut config = test_config();
+    config.editor.file_explorer.mode = FileExplorerMode::Tree;
+    let mut app = AppBuilder::new().with_config(config).build()?;
+    assert!(!app.editor.file_tree_window.open);
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), Some(&|app: &Application| {
+                assert!(app.editor.file_tree_window.open);
+            })),
+            (Some("q"), Some(&|app: &Application| {
+                assert!(!app.editor.file_tree_window.open);
+            })),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
     test((
         indoc! {r"

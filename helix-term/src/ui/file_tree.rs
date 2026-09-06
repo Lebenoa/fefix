@@ -28,7 +28,7 @@ use helix_view::{
 use tui::buffer::Buffer as Surface;
 
 use crate::{
-    compositor::{Component, Context, Event, EventResult},
+    compositor::{Component, Compositor, Context, Event, EventResult},
     ctrl, key, shift,
 };
 
@@ -905,6 +905,16 @@ impl Component for FileTree {
                 // Hand focus back to the editor; the window stays open.
                 self.focused = false;
                 return EventResult::Ignored(None);
+            }
+            key!('q') => {
+                // Close the tree window (its docked columns go back to the
+                // editor). Reusing the same callback as `close_file_tree`.
+                let callback = Box::new(|compositor: &mut Compositor, ctx: &mut Context| {
+                    compositor.remove(ID);
+                    ctx.editor.file_tree_window.open = false;
+                    compositor.need_full_redraw();
+                });
+                return EventResult::Consumed(Some(callback));
             }
             key!('r') => {
                 self.tree.refresh(&self.tree.selected.clone());
