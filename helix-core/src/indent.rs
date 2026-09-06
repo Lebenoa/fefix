@@ -474,10 +474,18 @@ impl<'a> Indentation<'a> {
         tab_width: usize,
     ) -> Option<String> {
         if self.align == other_computed_indent.align {
+            let indent_diff = self.net_indent() - other_computed_indent.net_indent();
+            if indent_diff == 0 && self.align.is_none() {
+                // The new line and the baseline line sit at the same computed level without any
+                // alignment. The baseline's actual leading whitespace carries no information here
+                // (it may itself be unindented in the file), so return None to let the caller use
+                // the tree-sitter indent for the new line directly. Aligned lines are exempt: for
+                // aligned continuations the baseline's actual whitespace is exactly what is wanted.
+                return None;
+            }
             // If self and baseline are either not aligned to anything or both aligned the same way,
             // we can simply take `other_leading_whitespace` and add some indent / outdent to it (in the second
             // case, the alignment should already be accounted for in `other_leading_whitespace`).
-            let indent_diff = self.net_indent() - other_computed_indent.net_indent();
             Some(add_indent_level(
                 String::from(other_leading_whitespace),
                 indent_diff,
@@ -1339,6 +1347,11 @@ pub fn indent_for_newline(
                             false,
                         )?;
                         let leading_whitespace = line.slice(0..first_non_whitespace_char);
+                        if computed_indent.net_indent() < 0 {
+                            // The baseline line outdents itself (e.g. a closing brace or tag token).
+                            // Its computed net indent is not a usable reference level.
+                            return None;
+                        }
                         indent.relative_indent(
                             &computed_indent,
                             leading_whitespace,
@@ -1431,6 +1444,31 @@ mod test {
     }
 
     #[test]
+    fn svelte_multiline_start_tag_baseline() {
+        // Regression: a newline inserted at the end of a line inside a multi-line
+        // start tag used to inherit the (unindented) baseline line's whitespace,
+        // losing the tag's indent level. It must use the tree-sitter indent.
+        use crate::syntax::config::IndentationHeuristic;
+        let loader = crate::config::default_lang_loader();
+        let lang = loader.language_for_name("svelte").expect("svelte language");
+        let text = Rope::from("<div\nonclick={x}\nclass=\"b\"\n>\n</div>\n");
+        let syntax = Syntax::new(text.slice(..), lang, &loader).expect("parse");
+        let pos = text.line_to_char(1) + text.line(1).len_chars() - 1;
+        let indent = indent_for_newline(
+            &loader,
+            Some(&syntax),
+            &IndentationHeuristic::Hybrid,
+            &IndentStyle::Spaces(2),
+            2,
+            text.slice(..),
+            1,
+            pos,
+            1,
+        );
+        assert_eq!(indent, "  ");
+    }
+
+    #[test]
     fn test_relative_indent() {
         let indent_style = IndentStyle::Spaces(4);
         let tab_width: usize = 4;
@@ -1458,15 +1496,19 @@ mod test {
         // Check that relative and absolute indentation computation are the same when the line we compare to is
         // indented as we expect.
         let check_consistency = |indent: &Indentation, other: &Indentation| {
-            assert_eq!(
-                indent.relative_indent(
-                    other,
-                    RopeSlice::from(other.to_string(&indent_style, tab_width).as_str()),
-                    &indent_style,
-                    tab_width
-                ),
-                Some(indent.to_string(&indent_style, tab_width))
+            let relative = indent.relative_indent(
+                other,
+                RopeSlice::from(other.to_string(&indent_style, tab_width).as_str()),
+                &indent_style,
+                tab_width,
             );
+            if indent.net_indent() == other.net_indent() && indent.align.is_none() {
+                // Equal computed levels without alignment defer to the absolute indent instead of
+                // the baseline line's actual whitespace.
+                assert_eq!(relative, None);
+            } else {
+                assert_eq!(relative, Some(indent.to_string(&indent_style, tab_width)));
+            }
         };
         for a in &no_align {
             for b in &no_align {
@@ -1485,16 +1527,17 @@ mod test {
                 &no_align[0],
                 RopeSlice::from("      "),
                 &indent_style,
-                tab_width
+                tab_width,
             ),
             None
         );
+        // A different alignment string is also not comparable to an aligned line.
         assert_eq!(
             align[0].relative_indent(
                 &different_align,
                 RopeSlice::from("      "),
                 &indent_style,
-                tab_width
+                tab_width,
             ),
             None
         );

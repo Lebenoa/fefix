@@ -38,7 +38,9 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 /// 4. `FEFIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
 /// 5. subdirectory of the cargo workspace the executable was built in or was
 ///    started from, when it is run directly from a source checkout
-/// 6. subdirectory of path to helix executable (always included)
+/// 6. `runtime` beside the cargo home that contains the executable (e.g.
+///    `~/.cargo/runtime` for a `cargo install`ed `~/.cargo/bin/fx`)
+/// 7. subdirectory of path to helix executable (always included)
 ///
 /// Postcondition: returns at least two paths (they might not exist).
 fn prioritize_runtime_dirs() -> Vec<PathBuf> {
@@ -84,6 +86,18 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
         if let Some(dir) = exe_path
             .parent()
             .and_then(|dir| ancestor_runtime_dir(dir, RT_DIR))
+        {
+            if !workspace_rt_dirs.contains(&dir) {
+                workspace_rt_dirs.push(dir);
+            }
+        }
+        // `cargo install --path .` installs into `<cargo-home>/bin`; look for a
+        // runtime directory beside the cargo home (e.g. `~/.cargo/runtime`).
+        if let Some(dir) = exe_path
+            .parent()
+            .and_then(Path::parent)
+            .map(|cargo_home| cargo_home.join(RT_DIR))
+            .filter(|dir| dir.is_dir())
         {
             if !workspace_rt_dirs.contains(&dir) {
                 workspace_rt_dirs.push(dir);

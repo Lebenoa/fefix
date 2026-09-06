@@ -17,4 +17,6 @@
   (else_if_clause)
   (else_clause)
   (await_branch)
+  (start_tag ">" @outdent)
+  (self_closing_tag "/>" @outdent)
 ] @outdent

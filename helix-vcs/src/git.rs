@@ -1,6 +1,5 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
-use gix::filter::plumbing::driver::apply::Delay;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
@@ -55,8 +54,14 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
         let rela_path = file.strip_prefix(work_dir)?;
         let rela_path = gix::path::try_into_bstr(rela_path)?;
         let (mut pipeline, _) = repo.filter_pipeline(None)?;
-        let mut worktree_outcome =
-            pipeline.convert_to_worktree(&data, rela_path.as_ref(), Delay::Forbid)?;
+        let mut worktree_outcome = pipeline.convert_to_worktree(
+            &data,
+            rela_path.as_ref(),
+            gix::filter::plumbing::pipeline::convert::to_worktree::Options {
+                can_delay: gix::filter::plumbing::driver::apply::Delay::Forbid,
+                ..Default::default()
+            },
+        )?;
         let mut buf = Vec::with_capacity(data.len());
         worktree_outcome.read_to_end(&mut buf)?;
         Ok(buf)
