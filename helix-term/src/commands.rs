@@ -3225,10 +3225,11 @@ fn file_explorer(cx: &mut Context) {
         return;
     }
 
-    // With `[editor.file-explorer] mode = "tree"`, the explorer commands open
-    // the persistent file tree window instead of the modal picker.
+    // With `[editor.file-explorer] mode = "tree"`, the explorer command
+    // toggles the persistent file tree window instead of showing the modal
+    // picker, so it both opens and closes the window at the workspace root.
     if cx.editor.config().file_explorer.mode == FileExplorerMode::Tree {
-        open_file_tree(cx, root);
+        file_tree(cx);
         return;
     }
 

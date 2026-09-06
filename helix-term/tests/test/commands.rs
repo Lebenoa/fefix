@@ -956,6 +956,29 @@ async fn directory_argument_keeps_picker_in_default_mode() -> anyhow::Result<()>
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn file_explorer_toggles_tree_in_tree_mode() -> anyhow::Result<()> {
+    // With `[editor.file-explorer] mode = "tree"`, `<space>e` opens the tree
+    // window on the first press and closes it on the second (it toggles).
+    let mut config = test_config();
+    config.editor.file_explorer.mode = FileExplorerMode::Tree;
+    let mut app = AppBuilder::new().with_config(config).build()?;
+    assert!(!app.editor.file_tree_window.open);
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), Some(&|app: &Application| {
+                assert!(app.editor.file_tree_window.open);
+            })),
+            (Some("<esc><space>e"), Some(&|app: &Application| {
+                assert!(!app.editor.file_tree_window.open);
+            })),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
     test((
         indoc! {r"

@@ -34,7 +34,7 @@ Features:
 * The file tree remembers which directories are expanded across sessions with the same root, so reopening the tree restores your navigation.
 * The file tree can be filtered with a search bar: `/` starts typing a query and the visible entries narrow to paths containing it (case-insensitive, searched across the whole tree rather than just expanded directories); `Esc` clears the filter.
 * The file tree window's width is configurable with the `[editor.file-tree] width` option (default 30 columns) and can be resized live by dragging the separator between the tree and the editor with the mouse.
-* The `file_explorer` keys (`<space>e`, `<space>.`) are now the single entry point for browsing files: they open the configured style — the modal picker by default, or the file tree window with `[editor.file-explorer] mode = "tree"`. The separate `<space>t` / `<space>T` file tree keybindings are removed; the `file_tree*` commands remain available to bind manually.
+* The `file_explorer` keys (`<space>e`, `<space>.`) are now the single entry point for browsing files: they open the configured style — the modal picker by default, or the file tree window with `[editor.file-explorer] mode = "tree"`. In tree mode `<space>e` toggles the window (press again to close); `<space>.` opens (or re-roots) it at the current buffer's directory.
 
 # 25.07.1 (2025-07-18)
 
