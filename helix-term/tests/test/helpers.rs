@@ -384,8 +384,6 @@ impl AppBuilder {
         self
     }
 
-    // Remove this attribute once `with_config` is used in a test:
-    #[allow(dead_code)]
     pub fn with_config(mut self, mut config: Config) -> Self {
         let keys = replace(&mut config.keys, helix_term::keymap::default());
         merge_keys(&mut config.keys, keys);
@@ -406,10 +404,6 @@ impl AppBuilder {
     pub fn build(self) -> anyhow::Result<Application> {
         if let Some(path) = &self.args.working_directory {
             bail!("Changing the working directory to {path:?} is not yet supported for integration tests");
-        }
-
-        if let Some((path, _)) = self.args.files.first().filter(|p| p.0.is_dir()) {
-            bail!("Having the directory {path:?} in args.files[0] is not yet supported for integration tests");
         }
 
         let mut app = Application::new(

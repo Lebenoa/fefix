@@ -32,7 +32,7 @@ use crate::{
 use log::{debug, error, info, warn};
 use std::{
     io::{stdin, IsTerminal},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -100,7 +100,7 @@ impl Application {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
-        use helix_view::editor::Action;
+        use helix_view::editor::{Action, FileExplorerMode};
 
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
@@ -141,6 +141,11 @@ impl Application {
 
         let jobs = Jobs::new();
 
+        // Set below when the first file argument is a directory and the
+        // file explorer is in tree mode; the tree window is opened after
+        // the scratch buffer exists (see below).
+        let mut opened_directory: Option<PathBuf> = None;
+
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
@@ -149,10 +154,19 @@ impl Application {
         } else if !args.files.is_empty() {
             let mut files_it = args.files.into_iter().peekable();
 
-            // If the first file is a directory, skip it and open a picker
+            // If the first file is a directory, remember it. With
+            // `[editor.file-explorer] mode = "tree"` (e.g. `fx .`) it is
+            // shown in the persistent file tree window docked to the left;
+            // the window is opened below, after the scratch buffer exists so
+            // the tree has a current document to reveal. Otherwise a modal
+            // file picker is opened right away, as before.
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(&editor, first);
-                compositor.push(Box::new(overlaid(picker)));
+                if editor.config().file_explorer.mode == FileExplorerMode::Tree {
+                    opened_directory = Some(first);
+                } else {
+                    let picker = ui::file_picker(&editor, first);
+                    compositor.push(Box::new(overlaid(picker)));
+                }
             }
 
             // If there are any more files specified, open them
@@ -230,6 +244,20 @@ impl Application {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+        }
+
+        // Open the directory argument in the file tree window now that a
+        // document exists for it to reveal. Make the root absolute first:
+        // `fx .` must not root the tree at "." (which normalizes to an
+        // empty path and shows nothing); canonicalize resolves it to the
+        // current working directory.
+        if let Some(root) = opened_directory {
+            let root = root.canonicalize().unwrap_or(root);
+            editor.file_tree_window.open = true;
+            compositor.replace_or_push(
+                ui::file_tree::ID,
+                ui::file_tree::FileTree::new(root, &mut editor),
+            );
         }
 
         #[cfg(windows)]

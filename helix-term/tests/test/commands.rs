@@ -1,4 +1,6 @@
 use helix_term::application::Application;
+use helix_view::editor::FileExplorerMode;
+use tempfile::tempdir;
 
 use super::*;
 
@@ -925,6 +927,31 @@ async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
     ))
     .await?;
 
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn directory_argument_opens_tree_in_tree_mode() -> anyhow::Result<()> {
+    // `fx <directory>` (e.g. `fx .`) shows the directory in the persistent
+    // file tree window when `[editor.file-explorer] mode = "tree"` is set.
+    let dir = tempdir()?;
+    let mut config = test_config();
+    config.editor.file_explorer.mode = FileExplorerMode::Tree;
+    let app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    assert!(app.editor.file_tree_window.open);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn directory_argument_keeps_picker_in_default_mode() -> anyhow::Result<()> {
+    let dir = tempdir()?;
+    let app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .build()?;
+    assert!(!app.editor.file_tree_window.open);
     Ok(())
 }
 

@@ -252,6 +252,15 @@ Note that the ignore files consulted by the file explorer when `ignore` is set t
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `false`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `false`
 |`flatten-dirs` | Enables flattening single child directories | `true`
+|`mode` | How the file explorer commands present files: `"picker"` (the default) opens the modal picker that lists one directory at a time, `"tree"` opens the persistent file tree window instead. In `"tree"` mode the window uses the `[editor.file-tree]` settings (ignore behaviour, width, icons) and `flatten-dirs` is ignored | `"picker"`
+
+Example
+
+```toml
+[editor.file-explorer]
+# Open the file tree window from the file explorer keys (`<space>e`, `<space>.`).
+mode = "tree"
+```
 
 ### `[editor.file-tree]` Section
 
@@ -267,7 +276,16 @@ Configure the file tree sidebar (see the `file_tree` command). Like the file exp
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `true`
 |`width` | Preferred width of the file tree content in columns (the separator column between the tree and the editor excluded). The width can also be adjusted per session by dragging that separator with the mouse | `30`
-|`icons` | Show VS Code / Zed style folder and file icons. Folders get an open/closed folder glyph and files get a type-specific glyph (rust, markdown, git, etc., falling back to a generic file glyph). Icons use Nerd Font glyphs (v3 or later). Accepts `"auto"` (the default), `"nerdfont"` or `"ascii"`: `"auto"` enables icons when the terminal is likely to support Nerd Fonts (detected from `TERM_PROGRAM`/`TERM` and friends; on Termux the font installed at `~/.termux/font.ttf` is inspected directly), `"nerdfont"` always renders them and `"ascii"` falls back to ASCII expand/collapse arrows | `"auto"`
+|`icons` | Show VS Code / Zed style folder and file icons. Folders get an open/closed folder glyph (or a special glyph for well-known folder names like `src`, `assets` or `scripts`) and files get a type-specific glyph (rust, markdown, git, etc., falling back to a generic file glyph). Icons use Nerd Font glyphs (v3 or later). Accepts `"auto"` (the default), `"nerdfont"` or `"ascii"`: `"auto"` enables icons when the terminal is likely to support Nerd Fonts (detected from `TERM_PROGRAM`/`TERM` and friends; on Termux the font installed at `~/.termux/font.ttf` is inspected directly), `"nerdfont"` always renders them and `"ascii"` falls back to ASCII expand/collapse arrows | `"auto"`
+|`folder-icons` | Custom Nerd Font glyphs for folder names, overriding the built-in folder icons. Keys are folder names and values the glyph to render, written either as the glyph itself or as a `\UXXXXXXXX` escape. Folders without an entry keep their built-in icon (or the generic folder glyph). Requires `icons` to be `"nerdfont"` or `"auto"` with a Nerd Font capable terminal | `{}`
+
+Example
+
+```toml
+[editor.file-tree]
+# Give `src` a folder-with-gear glyph (nf-md-folder_cog, U+F107F).
+folder-icons = { src = "\U000F107F" }
+```
 
 ### `[editor.buffer-picker]` Section
 

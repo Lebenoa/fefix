@@ -26,10 +26,15 @@ fefix is a fork of [Helix](https://github.com/helix-editor/helix). Entries below
 
 Features:
 
+* Opening a directory as the first argument — `fx <dir>`, e.g. `fx .` — shows it in the persistent file tree window docked to the left instead of the modal file picker when `[editor.file-explorer] mode = "tree"` is set (the default keeps the picker).
 * Add a `file_tree` command which opens a VS Code / Zed style file tree window docked to the left of the editor. It is a persistent window rather than a modal overlay: `enter` opens a file and moves focus to the editor while the window stays open, and `esc` moves focus from the tree back to the editor. Directories expand and collapse lazily (`<right>`/`<left>`, `l`/`h`, or `enter` to toggle) and opening the tree reveals the current buffer. `<space>t` toggles the window at the workspace root; `<space>T` opens it at the current buffer's directory.
-* The file tree shows VS Code / Zed style icons (Nerd Font glyphs) when the terminal is likely to support Nerd Fonts: folders get an open/closed folder glyph and files a type-specific glyph (rust, markdown, git, etc.). Control with the new `[editor.file-tree] icons` option (`"auto"`, `"nerdfont"`, or `"ascii"`). On Termux, `"auto"` inspects the font installed at `~/.termux/font.ttf` to decide.
+* The file tree shows VS Code / Zed style icons (Nerd Font glyphs) when the terminal is likely to support Nerd Fonts: folders get an open/closed folder glyph (or a special glyph for well-known folder names like `src`, `assets`, `scripts`, `node_modules`, `.github`) and files a type-specific glyph (rust, markdown, git, etc.). Control with the new `[editor.file-tree] icons` option (`"auto"`, `"nerdfont"`, or `"ascii"`). On Termux, `"auto"` inspects the font installed at `~/.termux/font.ttf` to decide.
+* The built-in folder glyphs of the file tree can be overridden per folder name with the new `[editor.file-tree] folder-icons` option, mapping folder names to Nerd Font glyphs (e.g. `folder-icons = { src = "\U000F107F" }`).
+* The file explorer commands (`<space>e`, `<space>.`) can open the persistent file tree window instead of the modal picker with the new `[editor.file-explorer] mode` option (`"picker"` (the default) or `"tree"`). In `"tree"` mode the window uses the `[editor.file-tree]` settings and `flatten-dirs` is ignored.
 * The file tree remembers which directories are expanded across sessions with the same root, so reopening the tree restores your navigation.
+* The file tree can be filtered with a search bar: `/` starts typing a query and the visible entries narrow to paths containing it (case-insensitive, searched across the whole tree rather than just expanded directories); `Esc` clears the filter.
 * The file tree window's width is configurable with the `[editor.file-tree] width` option (default 30 columns) and can be resized live by dragging the separator between the tree and the editor with the mouse.
+* The `file_explorer` keys (`<space>e`, `<space>.`) are now the single entry point for browsing files: they open the configured style — the modal picker by default, or the file tree window with `[editor.file-explorer] mode = "tree"`. The separate `<space>t` / `<space>T` file tree keybindings are removed; the `file_tree*` commands remain available to bind manually.
 
 # 25.07.1 (2025-07-18)
 

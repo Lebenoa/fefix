@@ -223,6 +223,28 @@ impl Default for FilePickerConfig {
     }
 }
 
+/// How the file explorer commands (`file_explorer`, ...) present files: as a
+/// modal picker listing one directory at a time, or as the persistent file
+/// tree window. Defaults to the picker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FileExplorerMode {
+    /// A modal picker overlay listing the contents of one directory; pressing
+    /// enter on a directory descends into it.
+    #[serde(rename = "picker")]
+    Picker,
+    /// The persistent file tree window docked to the left of the editor,
+    /// which expands directories in place. The window then uses the
+    /// `[editor.file-tree]` settings (ignore behaviour, width, icons).
+    #[serde(rename = "tree")]
+    Tree,
+}
+
+impl Default for FileExplorerMode {
+    fn default() -> Self {
+        Self::Picker
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FileExplorerConfig {
@@ -249,6 +271,11 @@ pub struct FileExplorerConfig {
     pub git_exclude: bool,
     /// Whether to flatten single-child directories in file explorer. Defaults to true.
     pub flatten_dirs: bool,
+    /// How the file explorer presents files: `"picker"` (the default) opens
+    /// the modal picker that lists one directory at a time, `"tree"` opens
+    /// the persistent file tree window instead (which then uses the
+    /// `[editor.file-tree]` settings). Defaults to `"picker"`.
+    pub mode: FileExplorerMode,
 }
 
 impl Default for FileExplorerConfig {
@@ -262,6 +289,7 @@ impl Default for FileExplorerConfig {
             git_global: false,
             git_exclude: false,
             flatten_dirs: true,
+            mode: FileExplorerMode::Picker,
         }
     }
 }
@@ -429,6 +457,14 @@ pub struct FileTreeConfig {
     /// support Nerd Fonts, `"nerdfont"` always renders them and `"ascii"`
     /// falls back to ASCII expand/collapse arrows.
     pub icons: IconMode,
+    /// Custom Nerd Font glyphs for well-known folder names, overriding the
+    /// built-in folder icons (`src`, `assets`, `scripts`, `node_modules`, ...).
+    /// Keys are folder names and values the glyph to render for them, written
+    /// either as the glyph itself or as a `\UXXXXXXXX` escape, e.g.
+    /// `folder-icons = { src = "\U000F107F" }`. Folders without an entry keep
+    /// their built-in icon (or the generic folder glyph). Defaults to an empty
+    /// map.
+    pub folder_icons: HashMap<String, String>,
 }
 
 impl Default for FileTreeConfig {
@@ -443,6 +479,7 @@ impl Default for FileTreeConfig {
             git_exclude: true,
             width: 30,
             icons: IconMode::Auto,
+            folder_icons: HashMap::new(),
         }
     }
 }
@@ -2927,9 +2964,26 @@ mod tests {
     }
 
     #[test]
+    fn file_explorer_mode_field_deserializes() {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "kebab-case")]
+        struct Section {
+            file_explorer: FileExplorerConfig,
+        }
+        let section: Section = toml::from_str("[file-explorer]\nmode = \"tree\"").unwrap();
+        assert_eq!(section.file_explorer.mode, FileExplorerMode::Tree);
+        let section: Section = toml::from_str("[file-explorer]\nmode = \"picker\"").unwrap();
+        assert_eq!(section.file_explorer.mode, FileExplorerMode::Picker);
+        // Defaults to the picker for backward compatibility.
+        let config: FileExplorerConfig = FileExplorerConfig::default();
+        assert_eq!(config.mode, FileExplorerMode::Picker);
+    }
+
+    #[test]
     fn file_tree_config_defaults_to_auto_icons() {
         let config: FileTreeConfig = FileTreeConfig::default();
         assert_eq!(config.icons, IconMode::Auto);
+        assert!(config.folder_icons.is_empty());
     }
 
     #[test]
@@ -2945,5 +2999,36 @@ mod tests {
         assert_eq!(section.file_tree.icons, IconMode::NerdFont);
         let section: Section = toml::from_str("[file-tree]\nicons = \"auto\"").unwrap();
         assert_eq!(section.file_tree.icons, IconMode::Auto);
+    }
+
+    #[test]
+    fn file_tree_folder_icons_field_deserializes() {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "kebab-case")]
+        struct Section {
+            file_tree: FileTreeConfig,
+        }
+        // Glyphs can be given as `\U` escapes (here U+F107F) or as the glyph
+        // itself.
+        let section: Section =
+            toml::from_str("[file-tree]\nfolder-icons = { src = \"\\U000F107F\", misc = \"*\" }")
+                .unwrap();
+        assert_eq!(
+            section
+                .file_tree
+                .folder_icons
+                .get("src")
+                .map(String::as_str),
+            Some("\u{f107f}")
+        );
+        assert_eq!(
+            section
+                .file_tree
+                .folder_icons
+                .get("misc")
+                .map(String::as_str),
+            Some("*")
+        );
+        assert!(section.file_tree.folder_icons.get("assets").is_none());
     }
 }

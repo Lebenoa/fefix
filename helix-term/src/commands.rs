@@ -46,7 +46,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, Motion},
+    editor::{Action, FileExplorerMode, Motion},
     expansion,
     info::Info,
     input::KeyEvent,
@@ -3225,6 +3225,13 @@ fn file_explorer(cx: &mut Context) {
         return;
     }
 
+    // With `[editor.file-explorer] mode = "tree"`, the explorer commands open
+    // the persistent file tree window instead of the modal picker.
+    if cx.editor.config().file_explorer.mode == FileExplorerMode::Tree {
+        open_file_tree(cx, root);
+        return;
+    }
+
     if let Ok(picker) = ui::file_explorer(root, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
@@ -3252,6 +3259,13 @@ fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
+    // With `[editor.file-explorer] mode = "tree"`, the explorer commands open
+    // the persistent file tree window instead of the modal picker.
+    if cx.editor.config().file_explorer.mode == FileExplorerMode::Tree {
+        open_file_tree(cx, path);
+        return;
+    }
+
     if let Ok(picker) = ui::file_explorer(path, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
@@ -3262,6 +3276,13 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     if !cwd.exists() {
         cx.editor
             .set_error("Current working directory does not exist");
+        return;
+    }
+
+    // With `[editor.file-explorer] mode = "tree"`, the explorer commands open
+    // the persistent file tree window instead of the modal picker.
+    if cx.editor.config().file_explorer.mode == FileExplorerMode::Tree {
+        open_file_tree(cx, cwd);
         return;
     }
 

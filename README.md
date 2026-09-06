@@ -51,7 +51,7 @@ based on commit `079a789e`, 2026-07-23) with the following addition:
   capable, `icons = "nerdfont"` always renders them and `icons = "ascii"`
   falls back to ASCII expand/collapse arrows. Folders get an open/closed
   folder glyph and files a type-specific glyph (rust, markdown, git, etc.).
-  Expanded directories are remembered across tree sessions.
+  Expanded directories are remembered across tree sessions. With `[editor.file-explorer] mode = "tree"`, `fx <directory>` (e.g. `fx .`) opens the tree docked at that directory instead of a file picker.
 
 See the [CHANGELOG](./CHANGELOG.md) for details.
 

@@ -5,6 +5,12 @@
 //! tree or the editor. The tree lazily loads directory contents on expansion,
 //! remembers which directories are expanded across sessions and reveals
 //! (expands the ancestors of) the current buffer when opened.
+//!
+//! `/` starts a filter: a search bar appears at the top of the tree and the
+//! visible entries narrow to paths containing the typed query
+//! (case-insensitive). The first typed character loads the whole tree so
+//! matches are found anywhere, not just under expanded directories; `Esc`
+//! clears the filter and restores the tree.
 
 use std::{
     cell::RefCell,
@@ -16,14 +22,14 @@ use std::{
 use helix_view::{
     editor::{Action, FileTreeConfig},
     graphics::{CursorKind, Rect},
-    input::{MouseButton, MouseEvent, MouseEventKind},
+    input::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
     Editor,
 };
 use tui::buffer::Buffer as Surface;
 
 use crate::{
     compositor::{Component, Context, Event, EventResult},
-    ctrl, key,
+    ctrl, key, shift,
 };
 
 pub const ID: &str = "file-tree";
@@ -64,6 +70,24 @@ const ICON_DATABASE: &str = "\u{f1c0}"; // nf-fa-database
 const ICON_IMAGE: &str = "\u{f03e}"; // nf-fa-image
 const ICON_VIDEO: &str = "\u{f008}"; // nf-fa-film
 const ICON_LICENSE: &str = "\u{eb12}"; // nf-cod-law
+/// Special folder glyphs (also Nerd Font v3.5.1), used for well-known folder
+/// names so they stand out from the generic folder icon, the same style VS
+/// Code's file explorer uses. Unlike the generic folder, these stay the same
+/// whether the folder is expanded or collapsed.
+const ICON_FOLDER_CONFIG: &str = "\u{f107f}"; // nf-md-folder_cog
+const ICON_FOLDER_SRC: &str = "\u{ebdf}"; // nf-cod-folder_library
+const ICON_FOLDER_SCRIPT: &str = "\u{f19fc}"; // nf-md-folder_wrench
+const ICON_FOLDER_IMAGE: &str = "\u{f024f}"; // nf-md-folder_image
+const ICON_FOLDER_MUSIC: &str = "\u{f1359}"; // nf-md-folder_music
+const ICON_FOLDER_DOCS: &str = "\u{f0c82}"; // nf-md-folder_text
+const ICON_FOLDER_TEST: &str = "\u{f197e}"; // nf-md-folder_check
+const ICON_FOLDER_NODE_MODULES: &str = "\u{f0253}"; // nf-md-folder_multiple
+const ICON_FOLDER_BUILD: &str = "\u{f024d}"; // nf-md-folder_download
+const ICON_FOLDER_GITHUB: &str = "\u{ea84}"; // nf-cod-github
+const ICON_FOLDER_ENV: &str = "\u{f08ac}"; // nf-md-folder_key
+const ICON_FOLDER_DATA: &str = "\u{f12e3}"; // nf-md-folder_table
+const ICON_FOLDER_CACHE: &str = "\u{f0aba}"; // nf-md-folder_clock
+const ICON_FOLDER_ARCHIVE: &str = "\u{f06eb}"; // nf-md-folder_zip
 /// Smallest content width (in columns) the window can be resized to with the
 /// mouse.
 const MIN_WIDTH: u16 = 10;
@@ -323,13 +347,56 @@ impl Tree {
         out
     }
 
-    /// The index of the selected entry among the visible entries, or 0 if it
-    /// is not visible (e.g. its ancestors got collapsed).
-    fn selected_index(&self) -> usize {
-        self.visible()
+    /// The index of the selected entry among the given visible entries, or 0
+    /// if it is not visible (e.g. its ancestors got collapsed or a filter
+    /// hides it).
+    fn selected_index(&self, visible: &[(&TreeEntry, usize)]) -> usize {
+        visible
             .iter()
             .position(|(entry, _)| entry.path == self.selected)
             .unwrap_or(0)
+    }
+
+    /// Load the children of every directory in the tree, so a filter can
+    /// match files anywhere under the root, not just inside directories the
+    /// user has expanded. The expansion state is left untouched; loaded
+    /// children are kept as a cache afterwards.
+    fn load_all(&mut self) {
+        fn load_children_rec(entries: &mut [TreeEntry], config: &FileTreeConfig) {
+            for entry in entries.iter_mut() {
+                if entry.is_dir {
+                    if !entry.loaded {
+                        entry.children = read_children(&entry.path, config);
+                        entry.loaded = true;
+                    }
+                    load_children_rec(&mut entry.children, config);
+                }
+            }
+        }
+        load_children_rec(&mut self.entries, &self.config);
+    }
+
+    /// The entries to display: the normally visible ones when `filter` is
+    /// empty, otherwise every entry whose path contains `filter`
+    /// (case-insensitive), searched across the whole tree regardless of
+    /// expansion state (see [`Tree::load_all`]).
+    fn filtered_visible(&self, filter: &str) -> Vec<(&TreeEntry, usize)> {
+        if filter.is_empty() {
+            return self.visible();
+        }
+        let query = filter.to_lowercase();
+        let mut out = Vec::new();
+        flatten_all(&self.entries, 0, &mut out);
+        out.retain(|(entry, _)| {
+            entry
+                .path
+                .strip_prefix(&self.root)
+                .unwrap_or(&entry.path)
+                .to_string_lossy()
+                .to_lowercase()
+                .contains(&query)
+        });
+        out
     }
 
     /// The path of the selected entry, if any.
@@ -350,6 +417,17 @@ fn flatten<'a>(entries: &'a [TreeEntry], depth: usize, out: &mut Vec<(&'a TreeEn
         out.push((entry, depth));
         if entry.is_dir && entry.expanded {
             flatten(&entry.children, depth + 1, out);
+        }
+    }
+}
+
+/// Like [`flatten`], but descends into every directory regardless of its
+/// expansion state, so a filter can see the whole tree.
+fn flatten_all<'a>(entries: &'a [TreeEntry], depth: usize, out: &mut Vec<(&'a TreeEntry, usize)>) {
+    for entry in entries {
+        out.push((entry, depth));
+        if entry.is_dir {
+            flatten_all(&entry.children, depth + 1, out);
         }
     }
 }
@@ -404,6 +482,13 @@ pub struct FileTree {
     /// the editor. While `false` the window stays visible but ignores keys,
     /// so the editor underneath works normally.
     focused: bool,
+    /// Whether a filter is being edited: while `true` a search bar is shown at
+    /// the top of the tree and the visible entries are narrowed to the
+    /// `filter` query.
+    filtering: bool,
+    /// The current filter query (see [`FileTree::filtering`]). Empty when no
+    /// filter is active.
+    filter: String,
     /// The (column, content width) pair captured when a separator drag
     /// started, or `None` when not resizing.
     resizing: Option<(u16, u16)>,
@@ -429,18 +514,32 @@ impl FileTree {
             area: Rect::default(),
             icons,
             focused: true,
+            filtering: false,
+            filter: String::new(),
             resizing: None,
             max_width: 0,
         }
     }
 
+    /// The entries currently on display: narrowed to the filter query when a
+    /// filter is active.
+    fn visible_entries(&self) -> Vec<(&TreeEntry, usize)> {
+        self.tree.filtered_visible(&self.filter)
+    }
+
+    /// Leave filter mode and clear the query.
+    fn clear_filter(&mut self) {
+        self.filtering = false;
+        self.filter.clear();
+    }
+
     fn move_selection(&mut self, delta: isize) {
-        let visible = self.tree.visible();
+        let visible = self.visible_entries();
         let len = visible.len();
         if len == 0 {
             return;
         }
-        let index = self.tree.selected_index();
+        let index = self.tree.selected_index(&visible);
         let new_index = (index as isize + delta).clamp(0, len as isize - 1) as usize;
         if let Some(path) = visible.get(new_index).map(|(entry, _)| entry.path.clone()) {
             self.tree.select(&path);
@@ -448,7 +547,7 @@ impl FileTree {
     }
 
     fn move_to(&mut self, position: usize) {
-        let visible = self.tree.visible();
+        let visible = self.visible_entries();
         let len = visible.len();
         if len == 0 {
             return;
@@ -494,6 +593,9 @@ impl FileTree {
             return EventResult::Consumed(None);
         }
         self.focused = false;
+        // Opening a file hands focus to the editor; leave filter mode so the
+        // next visit starts from the full tree.
+        self.clear_filter();
         EventResult::Consumed(None)
     }
 
@@ -535,10 +637,12 @@ impl FileTree {
                     return EventResult::Ignored(None);
                 }
                 self.focused = true;
-                let index = self.offset + (row - area.top()) as usize;
+                // The search bar occupies the first row while filtering, so
+                // the entry rows below it are shifted by one.
+                let local_row = (row - area.top()).saturating_sub(u16::from(self.filtering));
+                let index = self.offset + local_row as usize;
                 let hit = self
-                    .tree
-                    .visible()
+                    .visible_entries()
                     .get(index)
                     .map(|(entry, depth)| (entry.path.clone(), entry.is_dir, *depth));
                 if let Some((path, is_dir, depth)) = hit {
@@ -620,16 +724,77 @@ fn file_icon(name: &str) -> &'static str {
     }
 }
 
+/// The VS Code style icon for a directory, chosen from its name: well-known
+/// folders like `src` or `assets` get a dedicated folder glyph, anything else
+/// falls back to the generic folder icon.
+fn folder_icon(name: &str) -> Option<&'static str> {
+    match name {
+        // Configuration.
+        "config" | ".config" | "settings" | ".settings" | ".vscode" | ".idea" | "dotfiles" => {
+            Some(ICON_FOLDER_CONFIG)
+        }
+        // Version control.
+        ".git" => Some(ICON_GIT),
+        ".github" => Some(ICON_FOLDER_GITHUB),
+        // Source code.
+        "src" | "source" | "lib" | "include" | "inc" | "app" | "apps" | "core" | "internal" => {
+            Some(ICON_FOLDER_SRC)
+        }
+        // Scripts and tooling.
+        "scripts" | "script" | "bin" | "cmd" | "hooks" | "tasks" | "tools" | "utils"
+        | "helpers" => Some(ICON_FOLDER_SCRIPT),
+        // Images and other visual media.
+        "assets" | "images" | "image" | "img" | "media" | "static" | "icons" | "pics"
+        | "photos" | "screenshots" => Some(ICON_FOLDER_IMAGE),
+        // Audio.
+        "music" | "audio" | "sounds" | "sound" => Some(ICON_FOLDER_MUSIC),
+        // Documentation.
+        "docs" | "doc" | "documentation" | "wiki" | "man" | "help" | "notes" => {
+            Some(ICON_FOLDER_DOCS)
+        }
+        // Tests.
+        "test" | "tests" | "__tests__" | "spec" | "specs" | "testing" => Some(ICON_FOLDER_TEST),
+        // Dependencies.
+        "node_modules" | "vendor" | "third_party" | "thirdparty" | "deps" | "packages" => {
+            Some(ICON_FOLDER_NODE_MODULES)
+        }
+        // Build output.
+        "dist" | "build" | "out" | "target" | "coverage" | "bundle" => Some(ICON_FOLDER_BUILD),
+        // Environments and secrets.
+        "env" | ".env" | "environment" | "venv" | ".venv" => Some(ICON_FOLDER_ENV),
+        // Data.
+        "data" | "db" | "database" | "datasets" | "sql" => Some(ICON_FOLDER_DATA),
+        // Caches and temporary files.
+        "cache" | ".cache" | "tmp" | "temp" => Some(ICON_FOLDER_CACHE),
+        // Archives.
+        "archive" | "archives" | "backup" | "backups" | "old" => Some(ICON_FOLDER_ARCHIVE),
+        _ => None,
+    }
+}
+
 /// The glyph rendered before an entry's name: a Nerd Font folder/file icon
-/// when icons are enabled, otherwise an ASCII expand/collapse arrow.
-fn symbol_for(entry: &TreeEntry, icons: bool) -> &'static str {
+/// when icons are enabled, otherwise an ASCII expand/collapse arrow. Well-known
+/// folders get their own folder glyph; other folders toggle between the open
+/// and closed folder icons. A user-configured glyph from `folder_icons` (the
+/// `[editor.file-tree] folder-icons` option) wins over the built-in folder
+/// icons.
+fn symbol_for<'a>(
+    entry: &TreeEntry,
+    icons: bool,
+    folder_icons: &'a HashMap<String, String>,
+) -> &'a str {
     if icons {
         if entry.is_dir {
-            if entry.expanded {
-                ICON_FOLDER_OPEN
-            } else {
-                ICON_FOLDER
+            if let Some(icon) = folder_icons.get(entry.name()) {
+                return icon;
             }
+            folder_icon(entry.name()).unwrap_or_else(|| {
+                if entry.expanded {
+                    ICON_FOLDER_OPEN
+                } else {
+                    ICON_FOLDER
+                }
+            })
         } else {
             file_icon(entry.name())
         }
@@ -660,7 +825,45 @@ impl Component for FileTree {
             _ => return EventResult::Ignored(None),
         };
 
+        // While a filter is being edited, printable characters extend the
+        // query (the search bar at the top shows it); navigation keys fall
+        // through to the regular handlers below. `Esc` leaves filter mode
+        // before handing focus back to the editor.
+        if self.filtering {
+            match key_event {
+                key!(Esc) | ctrl!('c') => {
+                    self.clear_filter();
+                    return EventResult::Consumed(None);
+                }
+                key!(Backspace) | shift!(Backspace) => {
+                    self.filter.pop();
+                    return EventResult::Consumed(None);
+                }
+                key!(Enter) => {
+                    return self.open_selected(ctx, Action::Replace);
+                }
+                KeyEvent {
+                    code: KeyCode::Char(c),
+                    modifiers,
+                } if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) => {
+                    // The first typed character loads the rest of the tree so
+                    // matches are found anywhere, not just under expanded
+                    // directories.
+                    if self.filter.is_empty() {
+                        self.tree.load_all();
+                    }
+                    self.filter.push(c);
+                    return EventResult::Consumed(None);
+                }
+                _ => {}
+            }
+        }
+
         match key_event {
+            key!('/') => {
+                // Start filtering the tree to matching paths.
+                self.filtering = true;
+            }
             key!(Up) | key!('k') | ctrl!('p') => {
                 self.move_selection(-1);
             }
@@ -746,14 +949,43 @@ impl Component for FileTree {
             }
         }
 
-        // Rows above the editor's statusline / commandline rows.
-        let height = tree_area.height.saturating_sub(2) as usize;
+        // The search bar occupies the first row while filtering; the rows
+        // below it (minus the editor's statusline / commandline rows) hold
+        // tree entries.
+        let bar_rows = u16::from(self.filtering);
+        let height = tree_area.height.saturating_sub(2 + bar_rows) as usize;
         if height == 0 {
             return;
         }
 
-        let visible = self.tree.visible();
-        let selected_index = self.tree.selected_index();
+        // While filtering, highlight the first row as a search bar showing the
+        // current query.
+        if self.filtering {
+            let bar_style = theme.get("ui.text").patch(selected_style);
+            surface.clear_with(
+                Rect {
+                    x: tree_area.x,
+                    y: tree_area.y,
+                    width: tree_area.width,
+                    height: 1,
+                },
+                bar_style,
+            );
+            let bar = format!("/{}", self.filter);
+            surface.set_stringn(
+                tree_area.x,
+                tree_area.y,
+                &bar,
+                tree_area.width as usize,
+                bar_style,
+            );
+        }
+
+        // Inlined (rather than via `visible_entries`) so only `self.tree` and
+        // `self.filter` stay borrowed here; the scroll adjustment below
+        // mutates `self.offset`.
+        let visible = self.tree.filtered_visible(&self.filter);
+        let selected_index = self.tree.selected_index(&visible);
 
         // Scroll to keep the selection visible.
         if selected_index < self.offset {
@@ -764,8 +996,8 @@ impl Component for FileTree {
 
         let mut line = String::new();
         for (row, (entry, depth)) in visible.iter().enumerate().skip(self.offset).take(height) {
-            let y = tree_area.y + (row - self.offset) as u16;
-            let symbol = symbol_for(entry, self.icons);
+            let y = tree_area.y + bar_rows + (row - self.offset) as u16;
+            let symbol = symbol_for(entry, self.icons, &self.tree.config.folder_icons);
 
             line.clear();
             for _ in 0..*depth {
@@ -927,7 +1159,7 @@ mod tests {
             .iter()
             .any(|(entry, depth)| { entry.path == file && *depth == 3 }));
         assert_eq!(tree.selected, file);
-        assert_eq!(tree.selected_index(), visible.len() - 1);
+        assert_eq!(tree.selected_index(&visible), visible.len() - 1);
     }
 
     #[test]
@@ -955,25 +1187,126 @@ mod tests {
         // pulls the selection up to it so it stays visible.
         tree.toggle(&dir);
         assert_eq!(tree.selected, dir);
-        assert_eq!(tree.selected_index(), 1);
+        assert_eq!(tree.selected_index(&tree.visible()), 1);
+    }
+
+    #[test]
+    fn filter_matches_anywhere_case_insensitively() {
+        let tmp = TempDir::new("filter");
+        write_file(&tmp.path().join("src/main.rs"));
+        write_file(&tmp.path().join("src/lib.rs"));
+        write_file(&tmp.path().join("docs/guide.md"));
+
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        // Children of collapsed directories are not visible normally...
+        assert_eq!(visible_paths(&tree), vec!["", "docs", "src"]);
+        // ...but once the tree is loaded, a filter finds them anywhere, and
+        // matches substrings case-insensitively.
+        tree.load_all();
+        let names = |filter: &str| -> Vec<String> {
+            tree.filtered_visible(filter)
+                .iter()
+                .map(|(entry, _)| entry.name().to_string())
+                .collect()
+        };
+        assert_eq!(names("main"), vec!["main.rs"]);
+        assert_eq!(names("MAIN"), vec!["main.rs"]); // case-insensitive
+        assert_eq!(names(".md"), vec!["guide.md"]);
+        // Matching a directory also brings in its subtree, whose paths contain
+        // the query as a prefix.
+        assert_eq!(names("src"), vec!["src", "lib.rs", "main.rs"]);
+        // The root entry is hidden while filtering, and a filter with no
+        // matches hides everything.
+        assert!(names("zzz").is_empty());
+    }
+
+    #[test]
+    fn filter_preserves_entry_depth() {
+        let tmp = TempDir::new("filter-depth");
+        write_file(&tmp.path().join("x/y/f.rs"));
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        tree.load_all();
+        // Matches keep their natural depth (3 for `x/y/f.rs`).
+        let visible = tree.filtered_visible("f.rs");
+        assert_eq!(visible.len(), 1);
+        assert_eq!(visible[0].1, 3);
     }
 
     #[test]
     fn symbols_switch_between_icons_and_arrows() {
         let mut dir = TreeEntry::new(PathBuf::from("dir"), true);
         let file = TreeEntry::new(PathBuf::from("f.xyz"), false);
+        let none = &HashMap::new();
 
         // Without icons: ASCII arrows for directories, blank for files.
-        assert_eq!(symbol_for(&dir, false), ARROW_COLLAPSED);
+        assert_eq!(symbol_for(&dir, false, none), ARROW_COLLAPSED);
         dir.expanded = true;
-        assert_eq!(symbol_for(&dir, false), ARROW_EXPANDED);
-        assert_eq!(symbol_for(&file, false), " ");
+        assert_eq!(symbol_for(&dir, false, none), ARROW_EXPANDED);
+        assert_eq!(symbol_for(&file, false, none), " ");
 
         // With icons: VS Code style folder icons (open/closed) and a file icon.
-        assert_eq!(symbol_for(&dir, true), ICON_FOLDER_OPEN);
+        assert_eq!(symbol_for(&dir, true, none), ICON_FOLDER_OPEN);
         dir.expanded = false;
-        assert_eq!(symbol_for(&dir, true), ICON_FOLDER);
-        assert_eq!(symbol_for(&file, true), ICON_FILE);
+        assert_eq!(symbol_for(&dir, true, none), ICON_FOLDER);
+        assert_eq!(symbol_for(&file, true, none), ICON_FILE);
+    }
+
+    #[test]
+    fn user_folder_icons_override_builtins() {
+        let mut overrides = HashMap::new();
+        overrides.insert("src".to_string(), "*x*".to_string());
+        let dir = TreeEntry::new(PathBuf::from("src"), true);
+        // A configured glyph wins over the built-in folder icon...
+        assert_eq!(symbol_for(&dir, true, &overrides), "*x*");
+        // ...and also applies to folders without a built-in icon.
+        overrides.insert("misc".to_string(), "*y*".to_string());
+        let misc = TreeEntry::new(PathBuf::from("misc"), true);
+        assert_eq!(symbol_for(&misc, true, &overrides), "*y*");
+        // ...while folders without an entry keep their built-in icon.
+        let assets = TreeEntry::new(PathBuf::from("assets"), true);
+        assert_eq!(symbol_for(&assets, true, &overrides), ICON_FOLDER_IMAGE);
+        // Overrides never apply when icons are disabled.
+        assert_eq!(symbol_for(&dir, false, &overrides), ARROW_COLLAPSED);
+    }
+
+    #[test]
+    fn folder_icons_are_type_specific() {
+        assert_eq!(folder_icon("src"), Some(ICON_FOLDER_SRC));
+        assert_eq!(folder_icon("assets"), Some(ICON_FOLDER_IMAGE));
+        assert_eq!(folder_icon("scripts"), Some(ICON_FOLDER_SCRIPT));
+        assert_eq!(folder_icon("docs"), Some(ICON_FOLDER_DOCS));
+        assert_eq!(folder_icon("tests"), Some(ICON_FOLDER_TEST));
+        assert_eq!(folder_icon(".config"), Some(ICON_FOLDER_CONFIG));
+        assert_eq!(folder_icon("music"), Some(ICON_FOLDER_MUSIC));
+        assert_eq!(folder_icon("node_modules"), Some(ICON_FOLDER_NODE_MODULES));
+        assert_eq!(folder_icon("vendor"), Some(ICON_FOLDER_NODE_MODULES));
+        assert_eq!(folder_icon("dist"), Some(ICON_FOLDER_BUILD));
+        assert_eq!(folder_icon("target"), Some(ICON_FOLDER_BUILD));
+        assert_eq!(folder_icon(".github"), Some(ICON_FOLDER_GITHUB));
+        assert_eq!(folder_icon(".git"), Some(ICON_GIT));
+        assert_eq!(folder_icon(".env"), Some(ICON_FOLDER_ENV));
+        assert_eq!(folder_icon("data"), Some(ICON_FOLDER_DATA));
+        assert_eq!(folder_icon("cache"), Some(ICON_FOLDER_CACHE));
+        assert_eq!(folder_icon("archive"), Some(ICON_FOLDER_ARCHIVE));
+        assert_eq!(folder_icon("tools"), Some(ICON_FOLDER_SCRIPT));
+        // Unknown folders fall back to the generic folder icon.
+        assert_eq!(folder_icon("misc"), None);
+        assert_eq!(folder_icon("README"), None);
+    }
+
+    #[test]
+    fn special_folder_icons_ignore_expansion_state() {
+        let mut dir = TreeEntry::new(PathBuf::from("src"), true);
+        let none = &HashMap::new();
+        // A well-known folder keeps its dedicated glyph whether collapsed...
+        assert_eq!(symbol_for(&dir, true, none), ICON_FOLDER_SRC);
+        // ...or expanded, unlike the generic folder icon.
+        dir.expanded = true;
+        assert_eq!(symbol_for(&dir, true, none), ICON_FOLDER_SRC);
+        // Without icons the arrows still reflect the expansion state.
+        assert_eq!(symbol_for(&dir, false, none), ARROW_EXPANDED);
+        dir.expanded = false;
+        assert_eq!(symbol_for(&dir, false, none), ARROW_COLLAPSED);
     }
 
     #[test]
