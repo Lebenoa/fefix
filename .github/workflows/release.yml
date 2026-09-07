@@ -166,7 +166,7 @@ jobs:
 
           ./linuxdeploy-x86_64.AppImage \
               --appdir "$APP.AppDir" -d contrib/Helix.desktop \
-              -i contrib/helix.png --output appimage
+              -i contrib/fefix.png --output appimage
 
           mv "$APP-$VERSION-$ARCH.AppImage" \
               "$APP-$VERSION-$ARCH.AppImage.zsync" dist
