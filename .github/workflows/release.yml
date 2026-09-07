@@ -4,6 +4,7 @@ on:
     tags:
     - '[0-9]+.[0-9]+'
     - '[0-9]+.[0-9]+.[0-9]+'
+    - 'v[0-9]+.[0-9]+.[0-9]+'
     branches:
     - 'patch/ci-release-*'
   pull_request:
@@ -18,11 +19,11 @@ permissions:
   contents: read
 
 env:
-  # Preview mode: Publishes the build output as a CI artifact instead of creating
-  # a release, allowing for manual inspection of the output. This mode is
-  # activated if the CI run was triggered by events other than pushed tags, or
-  # if the repository is a fork.
-  preview: ${{ !startsWith(github.ref, 'refs/tags/') || github.repository != 'helix-editor/helix' }}
+  # Preview mode: Publishes the build output as a CI artifact instead of
+  # creating a release, allowing for manual inspection of the output. Activated
+  # only when the run was NOT triggered by a pushed tag, so that tag pushes
+  # create real releases on both helix-editor/helix and forks.
+  preview: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   fetch-grammars:
