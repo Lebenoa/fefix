@@ -79,7 +79,56 @@ Note: Only certain languages have indentation definitions at the moment. Check
 
 # Installation
 
-[Installation documentation](./book/src/install.md).
+Pre-built binaries are published on the
+[GitHub Releases page](https://github.com/Lebenoa/fefix/releases). Each
+archive (`fefix-<version>-<arch>-linux.tar.xz`,
+`fefix-<version>-<arch>-macos.tar.xz`, or `fefix-<version>-<arch>-windows.zip`)
+contains the `ffx` binary **and** a `runtime/` directory, so it is fully
+self-contained — no extra setup needed.
+
+### Linux / macOS (tar.xz)
+
+```sh
+# download and extract the archive matching your architecture
+curl -LO https://github.com/Lebenoa/fefix/releases/latest/download/fefix-26.9.0-x86_64-linux.tar.xz
+tar xJf fefix-26.9.0-x86_64-linux.tar.xz
+cd fefix-26.9.0-x86_64-linux
+
+# run it from anywhere (runtime/ is resolved relative to the binary)
+./ffx --version
+```
+
+To use `ffx` from any directory, add it to your `$PATH` while keeping the
+extracted directory intact (the binary resolves `runtime/` relative to its
+real location, even through a symlink):
+
+```sh
+ln -sf "$(pwd)/ffx" ~/.local/bin/ffx   # keep runtime/ next to ffx in this dir
+ffx --version
+```
+
+If you move the binary alone (without its `runtime/` dir), point `FEFIX_RUNTIME`
+at the runtime dir, or copy `runtime/` to `~/.config/fefix/runtime` (see
+`ffx --health` for the exact search list).
+
+### Windows (zip)
+
+Extract the archive and run `ffx.exe`; `runtime/` ships alongside it the same
+way.
+
+### Debian / Ubuntu (.deb)
+
+Install the `.deb` asset directly:
+
+```sh
+sudo dpkg -i fefix-v26.9.0-x86_64-linux.deb   # if named helix_26.9.0-1_amd64.deb
+```
+
+### Building from source
+
+See [Installation documentation](./book/src/install.md) and
+[building from source](./book/src/building-from-source.md) for package
+managers and source builds.
 
 # Contributing
 
