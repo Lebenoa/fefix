@@ -123,54 +123,6 @@ jobs:
       - name: Build release binary
         run: cargo build --profile opt --locked --target ${{ matrix.target }}
 
-      - name: Build AppImage
-        shell: bash
-        if: matrix.build == 'x86_64-linux'
-        run: |
-          # Required as of 22.x https://github.com/AppImage/AppImageKit/wiki/FUSE
-          sudo add-apt-repository universe
-          sudo apt install libfuse2
-
-          mkdir dist
-
-          name=dev
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            name=${GITHUB_REF:10}
-          fi
-
-          build="${{ matrix.build }}"
-
-          export VERSION="$name"
-          export ARCH=${build%-linux}
-          export APP=fefix
-          export OUTPUT="fefix-$VERSION-$ARCH.AppImage"
-          export UPDATE_INFORMATION="gh-releases-zsync|$GITHUB_REPOSITORY_OWNER|fefix|latest|$APP-*-$ARCH.AppImage.zsync"
-
-          mkdir -p "$APP.AppDir"/usr/{bin,lib/fefix}
-
-          cp "target/${{ matrix.target }}/opt/ffx" "$APP.AppDir/usr/bin/ffx"
-          rm -rf runtime/grammars/sources
-          cp -r runtime "$APP.AppDir/usr/lib/fefix/runtime"
-
-          cat << 'EOF' > "$APP.AppDir/AppRun"
-          #!/bin/sh
-
-          APPDIR="$(dirname "$(readlink -f "${0}")")"
-          FEFIX_RUNTIME="$APPDIR/usr/lib/fefix/runtime" exec "$APPDIR/usr/bin/ffx" "$@"
-          EOF
-          chmod 755 "$APP.AppDir/AppRun"
-
-          curl -Lo linuxdeploy-x86_64.AppImage \
-              https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          chmod +x linuxdeploy-x86_64.AppImage
-
-          ./linuxdeploy-x86_64.AppImage \
-              --appdir "$APP.AppDir" -d contrib/Helix.desktop \
-              -i contrib/fefix.png --output appimage
-
-          mv "$APP-$VERSION-$ARCH.AppImage" \
-              "$APP-$VERSION-$ARCH.AppImage.zsync" dist
-
       - name: Install cargo-deb
         if: matrix.build == 'x86_64-linux'
         uses: taiki-e/install-action@84f5ac3124727fb3d284d4d22ee9ab3654fd09a6 # v2.87.7
@@ -251,7 +203,6 @@ jobs:
               chmod +x $pkgname/ffx$exe
 
               if [[ "$platform" = "x86_64-linux" ]]; then
-                  mv bins-$platform/fefix-*.AppImage* dist/
                   mv bins-$platform/*.deb dist/
               fi
 
