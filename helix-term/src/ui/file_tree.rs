@@ -1069,7 +1069,7 @@ mod tests {
     impl TempDir {
         fn new(name: &str) -> Self {
             let dir = std::env::temp_dir()
-                .join(format!("fx-file-tree-test-{}-{name}", std::process::id()));
+                .join(format!("ffx-file-tree-test-{}-{name}", std::process::id()));
             let _ = fs::remove_dir_all(&dir);
             fs::create_dir_all(&dir).unwrap();
             TempDir(dir)

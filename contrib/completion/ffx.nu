@@ -5,7 +5,7 @@
 #       The help message won't be overridden though, so it will still be present here
 
 def health_categories [] {
-    let languages = ^fx --health all-languages | detect columns | get Language | where { $in != null }
+    let languages = ^ffx --health all-languages | detect columns | get Language | where { $in != null }
     let completions = [ "all", "clipboard", "languages", "all-languages" ] | append $languages
     return $completions
 }
@@ -13,7 +13,7 @@ def health_categories [] {
 def grammar_categories [] { ["fetch", "build"] }
 
 # A post-modern text editor.
-export extern fx [
+export extern ffx [
     --help(-h),                                 # Prints help information
     --strict,                                   # Bail on error for commands that can fail
     --tutor,                                    # Loads the tutorial

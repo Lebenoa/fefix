@@ -38,7 +38,7 @@ async fn main_impl() -> Result<i32> {
 {}
 
 USAGE:
-    fx [FLAGS] [files]...
+    ffx [FLAGS] [files]...
 
 ARGS:
     <files>...    Set the input file to use, position can also be specified via file[:row[:col]]
@@ -91,9 +91,9 @@ FLAGS:
     }
 
     if args.fetch_grammars || args.build_grammars {
-        // `fx --grammar fetch`/`fx --grammar build` always install grammars
+        // `ffx --grammar fetch`/`ffx --grammar build` always install grammars
         // into the runtime directory in the user's config directory, so any
-        // `fx` binary finds them no matter where it is run from. The
+        // `ffx` binary finds them no matter where it is run from. The
         // compile-time auto grammar build (see `helix-term/build.rs`), in
         // contrast, installs into the workspace runtime directory.
         let install_dir = helix_loader::config_dir().join("runtime");

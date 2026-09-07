@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bash completion script for Helix editor
 
-_fx() {
+_ffx() {
     local cur prev languages
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -13,7 +13,7 @@ _fx() {
         return 0
         ;;
     --health)
-        languages=$(fx --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g')
+        languages=$(ffx --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g')
         mapfile -t COMPREPLY < <(compgen -W """clipboard languages all-languages all $languages""" -- "$cur")
         return 0
         ;;
@@ -29,4 +29,4 @@ _fx() {
         return 0
         ;;
     esac
-} && complete -o filenames -F _fx fx
+} && complete -o filenames -F _ffx ffx

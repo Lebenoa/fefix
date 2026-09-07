@@ -41,7 +41,7 @@ jobs:
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Fetch tree-sitter grammars
-        run: cargo run --package=helix-loader --bin=fx-loader
+        run: cargo run --package=helix-loader --bin=ffx-loader
 
       - name: Bundle grammars
         run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
@@ -148,7 +148,7 @@ jobs:
 
           mkdir -p "$APP.AppDir"/usr/{bin,lib/fefix}
 
-          cp "target/${{ matrix.target }}/opt/fx" "$APP.AppDir/usr/bin/fx"
+          cp "target/${{ matrix.target }}/opt/ffx" "$APP.AppDir/usr/bin/ffx"
           rm -rf runtime/grammars/sources
           cp -r runtime "$APP.AppDir/usr/lib/fefix/runtime"
 
@@ -156,7 +156,7 @@ jobs:
           #!/bin/sh
 
           APPDIR="$(dirname "$(readlink -f "${0}")")"
-          FEFIX_RUNTIME="$APPDIR/usr/lib/fefix/runtime" exec "$APPDIR/usr/bin/fx" "$@"
+          FEFIX_RUNTIME="$APPDIR/usr/lib/fefix/runtime" exec "$APPDIR/usr/bin/ffx" "$@"
           EOF
           chmod 755 "$APP.AppDir/AppRun"
 
@@ -182,7 +182,7 @@ jobs:
         if: matrix.build == 'x86_64-linux'
         run: |
           mkdir -p target/release
-          cp target/${{ matrix.target }}/opt/fx target/release/
+          cp target/${{ matrix.target }}/opt/ffx target/release/
           cargo deb --no-build
           mkdir -p dist
           mv target/debian/*.deb dist/
@@ -192,9 +192,9 @@ jobs:
         run: |
           mkdir -p dist
           if [ "${{ runner.os }}" = "Windows" ]; then
-            cp "target/${{ matrix.target }}/opt/fx.exe" "dist/"
+            cp "target/${{ matrix.target }}/opt/ffx.exe" "dist/"
           else
-            cp "target/${{ matrix.target }}/opt/fx" "dist/"
+            cp "target/${{ matrix.target }}/opt/ffx" "dist/"
           fi
           if [ -d runtime/grammars/sources ]; then
             rm -rf runtime/grammars/sources
@@ -247,8 +247,8 @@ jobs:
               mkdir $pkgname/contrib
               cp -r $source/contrib/completion $pkgname/contrib
               mv bins-$platform/runtime $pkgname/
-              mv bins-$platform/fx$exe $pkgname
-              chmod +x $pkgname/fx$exe
+              mv bins-$platform/ffx$exe $pkgname
+              chmod +x $pkgname/ffx$exe
 
               if [[ "$platform" = "x86_64-linux" ]]; then
                   mv bins-$platform/helix-*.AppImage* dist/

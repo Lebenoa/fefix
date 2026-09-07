@@ -155,7 +155,7 @@ impl Application {
             let mut files_it = args.files.into_iter().peekable();
 
             // If the first file is a directory, remember it. With
-            // `[editor.file-explorer] mode = "tree"` (e.g. `fx .`) it is
+            // `[editor.file-explorer] mode = "tree"` (e.g. `ffx .`) it is
             // shown in the persistent file tree window docked to the left;
             // the window is opened below, after the scratch buffer exists so
             // the tree has a current document to reveal. Otherwise a modal
@@ -248,7 +248,7 @@ impl Application {
 
         // Open the directory argument in the file tree window now that a
         // document exists for it to reveal. Make the root absolute first:
-        // `fx .` must not root the tree at "." (which normalizes to an
+        // `ffx .` must not root the tree at "." (which normalizes to an
         // empty path and shows nothing); canonicalize resolves it to the
         // current working directory.
         if let Some(root) = opened_directory {

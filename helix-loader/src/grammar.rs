@@ -512,14 +512,14 @@ fn build_grammar(
 
     let grammar_dir_entries = grammar_dir.read_dir().with_context(|| {
         format!(
-            "Failed to read directory {:?}. Did you use 'fx --grammar fetch'?",
+            "Failed to read directory {:?}. Did you use 'ffx --grammar fetch'?",
             grammar_dir
         )
     })?;
 
     if grammar_dir_entries.count() == 0 {
         return Err(anyhow!(
-            "Directory {:?} is empty. Did you use 'fx --grammar fetch'?",
+            "Directory {:?} is empty. Did you use 'ffx --grammar fetch'?",
             grammar_dir
         ));
     };
@@ -558,7 +558,7 @@ fn build_tree_sitter_library(
     };
     let parser_lib_path = install_dir.join("grammars");
     // Create the directory if it does not exist yet (e.g. running
-    // `fx --grammar build` before `fx --grammar fetch`, or for local
+    // `ffx --grammar build` before `ffx --grammar fetch`, or for local
     // grammars) so the grammars are installed automatically.
     fs::create_dir_all(&parser_lib_path)
         .with_context(|| format!("Could not create grammar directory {:?}", parser_lib_path))?;

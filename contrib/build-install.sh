@@ -2,11 +2,11 @@
 # Local build & install of fefix from this checkout.
 #
 # Produces a self-sufficient installation:
-#   ~/.cargo/bin/fx                        the release binary
+#   ~/.cargo/bin/ffx                        the release binary
 #   ~/.cargo/runtime/grammars/*.so         tree-sitter parsers (built or symlinked)
 #   ~/.cargo/runtime/queries/*.scm         indent/highlight/... queries (symlinked)
 #
-# The loader looks for `runtime/` beside the cargo home, so an installed `fx`
+# The loader looks for `runtime/` beside the cargo home, so an installed `ffx`
 # finds its queries and grammars from any working directory without
 # FEFIX_RUNTIME or a wrapper script.
 #
@@ -35,9 +35,9 @@ command -v cc >/dev/null 2>&1 || command -v c++ >/dev/null 2>&1 || command -v cl
 CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
 RT_DST="$CARGO_HOME/runtime"
 
-echo "==> cargo install --path helix-term --bin fx"
+echo "==> cargo install --path helix-term --bin ffx"
 # The build script auto-fetches + auto-builds grammars into runtime/grammars/.
-eval cargo install --path helix-term --bin fx $OPT
+eval cargo install --path helix-term --bin ffx $OPT
 
 echo "==> linking runtime files into $RT_DST"
 # queries/, themes/, tutor/ ship with the source checkout; grammars/ is
@@ -53,8 +53,8 @@ for entry in runtime/*; do
 done
 
 echo "==> verifying"
-if fx --health 2>&1 | grep -q 'Indent queries: ✘'; then
+if ffx --health 2>&1 | grep -q 'Indent queries: ✘'; then
     echo "warning: some languages report missing indent queries" >&2
 fi
-fx --health | sed -n '3,8p'
-echo "==> done: $(fx --version)"
+ffx --health | sed -n '3,8p'
+echo "==> done: $(ffx --version)"

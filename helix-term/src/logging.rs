@@ -1,4 +1,4 @@
-//! Logging support for `fx`.
+//! Logging support for `ffx`.
 
 use std::io::Write;
 use std::path::Path;

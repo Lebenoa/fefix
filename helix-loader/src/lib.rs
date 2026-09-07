@@ -39,7 +39,7 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 /// 5. subdirectory of the cargo workspace the executable was built in or was
 ///    started from, when it is run directly from a source checkout
 /// 6. `runtime` beside the cargo home that contains the executable (e.g.
-///    `~/.cargo/runtime` for a `cargo install`ed `~/.cargo/bin/fx`)
+///    `~/.cargo/runtime` for a `cargo install`ed `~/.cargo/bin/ffx`)
 /// 7. subdirectory of path to helix executable (always included)
 ///
 /// Postcondition: returns at least two paths (they might not exist).
@@ -71,7 +71,7 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     }
 
     // When a binary built from a source checkout is run directly (e.g.
-    // `target/release/fx`), it does not get the `CARGO_MANIFEST_DIR` runtime
+    // `target/release/ffx`), it does not get the `CARGO_MANIFEST_DIR` runtime
     // fallback that `cargo run` provides, so release binaries previously lost
     // access to the workspace `runtime` directory (grammars, queries, themes)
     // unless `FEFIX_RUNTIME` was set or a config symlink existed. Recover the

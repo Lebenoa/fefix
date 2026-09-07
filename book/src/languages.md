@@ -291,12 +291,12 @@ git repository:
 | ---    | -----------                                               |
 | `git`  | A git remote URL from which the grammar should be cloned  |
 | `rev`  | The revision (commit hash or tag) which should be fetched |
-| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `fx --grammar build` to the correct path for compilation. When omitted, the root of repository is used |
+| `subpath` | A path within the grammar directory which should be built. Some grammar repositories host multiple grammars (for example `tree-sitter-typescript` and `tree-sitter-ocaml`) in subdirectories. This key is used to point `ffx --grammar build` to the correct path for compilation. When omitted, the root of repository is used |
 
 ### Choosing grammars
 
 You may use a top-level `use-grammars` key to control which grammars are
-fetched and built when using `fx --grammar fetch` and `fx --grammar build`.
+fetched and built when using `ffx --grammar fetch` and `ffx --grammar build`.
 
 ```toml
 # Note: this key must come **before** the [[language]] and [[grammar]] sections

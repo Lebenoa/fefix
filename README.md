@@ -35,7 +35,7 @@ based on commit `079a789e`, 2026-07-23) with the following additions:
   of the editor. With `[editor.file-explorer] mode = "tree"` (set `mode` to
   `"tree"`; the default `"picker"` keeps the modal picker), `<space>e`
   toggles the tree at the workspace root and `<space>.` opens or re-roots it
-  at the current buffer's directory; `fx <dir>` (e.g. `fx .`) opens the tree
+  at the current buffer's directory; `ffx <dir>` (e.g. `ffx .`) opens the tree
   at that directory too. It is a persistent window, not a modal overlay:
   `enter` on a file opens it and moves focus to the editor while the window
   stays open, `esc` moves focus from the tree to the editor, `q` closes it

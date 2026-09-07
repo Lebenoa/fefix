@@ -932,7 +932,7 @@ async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn directory_argument_opens_tree_in_tree_mode() -> anyhow::Result<()> {
-    // `fx <directory>` (e.g. `fx .`) shows the directory in the persistent
+    // `ffx <directory>` (e.g. `ffx .`) shows the directory in the persistent
     // file tree window when `[editor.file-explorer] mode = "tree"` is set.
     let dir = tempdir()?;
     let mut config = test_config();

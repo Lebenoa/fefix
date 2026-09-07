@@ -142,7 +142,7 @@
 
  1. Exit fefix using :q! as explained before, or open a new
     terminal.
- 2. Open a file in fefix by running: fx FILENAME
+ 2. Open a file in fefix by running: ffx FILENAME
  3. Make some edits to the file.
  4. Type : to enter Command mode.
  5. Type w or write, and press Enter to save the file.

@@ -26,7 +26,7 @@ fefix is a fork of [Helix](https://github.com/helix-editor/helix). Entries below
 
 Features:
 
-* Opening a directory as the first argument — `fx <dir>`, e.g. `fx .` — shows it in the persistent file tree window docked to the left instead of the modal file picker when `[editor.file-explorer] mode = "tree"` is set (the default keeps the picker).
+* Opening a directory as the first argument — `ffx <dir>`, e.g. `ffx .` — shows it in the persistent file tree window docked to the left instead of the modal file picker when `[editor.file-explorer] mode = "tree"` is set (the default keeps the picker).
 * Add a `file_tree` command which opens a VS Code / Zed style file tree window docked to the left of the editor. It is a persistent window rather than a modal overlay: `enter` opens a file and moves focus to the editor while the window stays open, and `esc` moves focus from the tree back to the editor. Directories expand and collapse lazily (`<right>`/`<left>`, `l`/`h`, or `enter` to toggle) and opening the tree reveals the current buffer. `<space>t` toggles the window at the workspace root; `<space>T` opens it at the current buffer's directory.
 * The file tree shows VS Code / Zed style icons (Nerd Font glyphs) when the terminal is likely to support Nerd Fonts: folders get an open/closed folder glyph (or a special glyph for well-known folder names like `src`, `assets`, `scripts`, `node_modules`, `.github`) and files a type-specific glyph (rust, markdown, git, etc.). Control with the new `[editor.file-tree] icons` option (`"auto"`, `"nerdfont"`, or `"ascii"`). On Termux, `"auto"` inspects the font installed at `~/.termux/font.ttf` to decide.
 * The built-in folder glyphs of the file tree can be overridden per folder name with the new `[editor.file-tree] folder-icons` option, mapping folder names to Nerd Font glyphs (e.g. `folder-icons = { src = "\U000F107F" }`).
@@ -78,7 +78,7 @@ Commands:
 Usability improvements:
 
 * Replace current file using `A-ret` in pickers rather than loading it in the background ([#12605](https://github.com/helix-editor/helix/pull/12605))
-* Set multiple selections when passing a file with multiple locations to `fx` ([#12192](https://github.com/helix-editor/helix/pull/12192))
+* Set multiple selections when passing a file with multiple locations to `ffx` ([#12192](https://github.com/helix-editor/helix/pull/12192))
 * Add path completion for multiple cursors ([#12550](https://github.com/helix-editor/helix/pull/12550), [c9dc940](https://github.com/helix-editor/helix/commit/c9dc940))
 * Truncate long prompt lines with "…" ([#12036](https://github.com/helix-editor/helix/pull/12036), [9d6ea77](https://github.com/helix-editor/helix/commit/9d6ea77), [0b9701e](https://github.com/helix-editor/helix/commit/0b9701e), [d3fb8fc](https://github.com/helix-editor/helix/commit/d3fb8fc))
 * Allow specifying languages in `:lsp-stop` and `:lsp-restart` ([#12578](https://github.com/helix-editor/helix/pull/12578), [3d7e273](https://github.com/helix-editor/helix/commit/3d7e273))
@@ -123,7 +123,7 @@ Fixes:
 * Fix handling of `stderr` of DAP child processes ([d0d1693](https://github.com/helix-editor/helix/commit/d0d1693))
 * Cancel all pending requests when a DAP session terminates ([26db541](https://github.com/helix-editor/helix/commit/26db541))
 * Properly discard out-of-date diagnostics ([313a647](https://github.com/helix-editor/helix/commit/313a647))
-* Fix display of multiple language servers in `fx --health` ([#12841](https://github.com/helix-editor/helix/pull/12841))
+* Fix display of multiple language servers in `ffx --health` ([#12841](https://github.com/helix-editor/helix/pull/12841))
 * Respect `editor.default-yank-register` in `:yank-joined` ([#12890](https://github.com/helix-editor/helix/pull/12890))
 * Escape percent character when pasting the history register into the picker ([#12886](https://github.com/helix-editor/helix/pull/12886))
 * Render rulers before the cursor ([2d3b75a](https://github.com/helix-editor/helix/commit/2d3b75a))
@@ -444,7 +444,7 @@ Usability improvements:
 * Allow parsing `-` (with no modifiers) as a keybinding ([#12191](https://github.com/helix-editor/helix/pull/12191))
 * Improve opening statusline and error messages when opening duplicate files or directories ([#12199](https://github.com/helix-editor/helix/pull/12199))
 * Trim trailing colons in paths passed on the argv ([#9963](https://github.com/helix-editor/helix/pull/9963))
-* Show tree-sitter parser availability in `fx --health <lang>` ([#12228](https://github.com/helix-editor/helix/pull/12228))
+* Show tree-sitter parser availability in `ffx --health <lang>` ([#12228](https://github.com/helix-editor/helix/pull/12228))
 * Show a preview block for colors in the LSP completion menu ([#12299](https://github.com/helix-editor/helix/pull/12299))
 * Add infobox help for `surround_add`, `surround_replace` and `surround_delete` ([#12262](https://github.com/helix-editor/helix/pull/12262))
 
@@ -2323,7 +2323,7 @@ Commands:
 
 Usability improvements and fixes:
 
-- Handle broken pipes when piping `fx --health` through `head` ([#1876](https://github.com/helix-editor/helix/pull/1876))
+- Handle broken pipes when piping `ffx --health` through `head` ([#1876](https://github.com/helix-editor/helix/pull/1876))
 - Fix for `copy_selection` on newlines ([ab7885e](https://github.com/helix-editor/helix/commit/ab7885e), [236c6b7](https://github.com/helix-editor/helix/commit/236c6b7))
 - Use `win32yank` clipboard provider on WSL2 ([#1912](https://github.com/helix-editor/helix/pull/1912))
 - Jump to the next number on the line before incrementing ([#1778](https://github.com/helix-editor/helix/pull/1778))
@@ -2332,7 +2332,7 @@ Usability improvements and fixes:
 - Clear terminal after switching to alternate screens ([#1944](https://github.com/helix-editor/helix/pull/1944))
 - Fix `toggle_comments` command on multiple selections ([#1882](https://github.com/helix-editor/helix/pull/1882))
 - Apply `ui.gutter` theming to empty gutter spans ([#2032](https://github.com/helix-editor/helix/pull/2032))
-- Use checkboxes in `fx --health` output ([#1947](https://github.com/helix-editor/helix/pull/1947))
+- Use checkboxes in `ffx --health` output ([#1947](https://github.com/helix-editor/helix/pull/1947))
 - Pass unmapped keys through prompt regardless of modifiers ([764adbd](https://github.com/helix-editor/helix/commit/764adbd))
 - LSP: pull formatting options from config ([c18de0e](https://github.com/helix-editor/helix/commit/c18de0e))
 - LSP: provide `rootPath` ([84e799f](https://github.com/helix-editor/helix/commit/84e799f))
@@ -2487,10 +2487,10 @@ Features:
 - Tree-sitter textobjects motions for classes, functions, and parameters ([#1619](https://github.com/helix-editor/helix/pull/1619), [#1708](https://github.com/helix-editor/helix/pull/1708), [#1805](https://github.com/helix-editor/helix/pull/1805))
 - Command palette: a picker for available commands ([#1400](https://github.com/helix-editor/helix/pull/1400))
 - LSP `workspace/configuration` and `workspace/didChangeConfiguration` support ([#1684](https://github.com/helix-editor/helix/pull/1684))
-- `fx --health [LANG]` command ([#1669](https://github.com/helix-editor/helix/pull/1669))
+- `ffx --health [LANG]` command ([#1669](https://github.com/helix-editor/helix/pull/1669))
 - Refactor of the tree-sitter grammar system ([#1659](https://github.com/helix-editor/helix/pull/1659))
   - All submodules have been removed
-  - New `fx --grammar {fetch|build}` flags for fetching and building tree-sitter grammars
+  - New `ffx --grammar {fetch|build}` flags for fetching and building tree-sitter grammars
   - A custom grammar selection may now be declared with the `use-grammars` key in `languages.toml`
 
 Commands:
@@ -2822,7 +2822,7 @@ Fixes:
 - Refactor apply_workspace_edit to remove assert ([`b02d872`](https://github.com/helix-editor/helix/commit/b02d872))
 - Wrap around the top of the picker menu when scrolling ([`c7d6e44`](https://github.com/helix-editor/helix/commit/c7d6e44))
 - Don't allow closing the last split if there's unsaved changes ([`3ff5b00`](https://github.com/helix-editor/helix/commit/3ff5b00))
-- Indentation used different default on fx vs fx new_file.txt ([`c913bad`](https://github.com/helix-editor/helix/commit/c913bad))
+- Indentation used different default on ffx vs ffx new_file.txt ([`c913bad`](https://github.com/helix-editor/helix/commit/c913bad))
 
 # 0.4.1 (2021-08-14)
 
@@ -2893,7 +2893,7 @@ Features:
 - Current line number can now be themed ([#260](https://github.com/helix-editor/helix/pull/260))
 - Arrow keys & home/end now work in insert mode ([#305](https://github.com/helix-editor/helix/pull/305))
 - Cursors and selections can now be themed ([#325](https://github.com/helix-editor/helix/pull/325))
-- Language servers are now gracefully shut down before `fx` exits ([#287](https://github.com/helix-editor/helix/pull/287))
+- Language servers are now gracefully shut down before `ffx` exits ([#287](https://github.com/helix-editor/helix/pull/287))
 - `:show-directory`/`:change-directory` ([#335](https://github.com/helix-editor/helix/pull/335))
 - File picker is now sorted by access time (before filtering) ([#336](https://github.com/helix-editor/helix/pull/336))
 - Code is being migrated from helix-term to helix-view (prerequisite for

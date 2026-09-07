@@ -23,7 +23,7 @@ body:
 
         I tried this:
 
-        1. `fx`
+        1. `ffx`
 
         I expected this to happen:
 
@@ -32,7 +32,7 @@ body:
     id: helix-log
     attributes:
       label: fefix log
-      description: See `fx -h` for log file path. If you can reproduce the issue run `RUST_BACKTRACE=1 fx -vv` to generate a more detailed log file.
+      description: See `ffx -h` for log file path. If you can reproduce the issue run `RUST_BACKTRACE=1 ffx -vv` to generate a more detailed log file.
       value: |
         <details><summary>~/.cache/fefix/helix.log</summary>
 
@@ -70,7 +70,7 @@ body:
     attributes:
       label: fefix Version
       description: >
-        Helix version (`fx -V` if using a release, `git describe` if building
+        Helix version (`ffx -V` if using a release, `git describe` if building
         from master).
         **Make sure that you are using a recent build of [fefix](https://github.com/Lebenoa/fefix)**
       placeholder: "fefix 25.07 (5eaa6d97)"

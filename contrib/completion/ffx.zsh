@@ -1,7 +1,7 @@
-#compdef _fx fx
+#compdef _ffx ffx
 # Zsh completion script for Helix editor
 
-_fx() {
+_ffx() {
 	_arguments -C \
 		"-h[Prints help information]" \
 		"--help[Prints help information]" \
@@ -26,7 +26,7 @@ _fx() {
 
 	case "$state" in
 	health)
-		local languages=($(fx --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g;s/[✘✓]//g'))
+		local languages=($(ffx --health all-languages | tail -n '+2' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g;s/[✘✓]//g'))
 		_values 'language' $languages
 		;;
 	grammar)

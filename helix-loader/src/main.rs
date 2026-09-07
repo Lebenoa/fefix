@@ -8,7 +8,7 @@ const STRICT: bool = true;
 
 fn main() -> Result<()> {
     // Fetch into the workspace runtime directory so the grammar sources can be
-    // packaged alongside the runtime (unlike `fx --grammar fetch`, which
+    // packaged alongside the runtime (unlike `ffx --grammar fetch`, which
     // installs into the user config directory).
     let install_dir = helix_loader::runtime_dirs()
         .first()

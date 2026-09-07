@@ -29,7 +29,7 @@ The following third party repositories are available:
 ### Debian
 
 ```sh
-sudo apt install fx
+sudo apt install ffx
 ```
 
 If you are running a system older than Debian 13, follow the steps for
@@ -108,13 +108,13 @@ Download the fefix AppImage from the [latest releases](https://github.com/Lebeno
 
 ```sh
 chmod +x fefix-*.AppImage # change permission for executable mode
-./fefix-*.AppImage # run fx
+./fefix-*.AppImage # run ffx
 ```
 
-You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut). Helix must be installed in `PATH` with the name `fx`. For example:
+You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut). Helix must be installed in `PATH` with the name `ffx`. For example:
 ```sh
 mkdir -p "$HOME/.local/bin"
-mv fefix-*.AppImage "$HOME/.local/bin/fx"
+mv fefix-*.AppImage "$HOME/.local/bin/ffx"
 ```
 
 and make sure `~/.local/bin` is in your `PATH`.

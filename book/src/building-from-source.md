@@ -47,14 +47,14 @@ RUSTFLAGS="-C target-feature=-crt-static"
       --locked
    ```
 
-   Either command will create the `fx` executable and construct the tree-sitter
+   Either command will create the `ffx` executable and construct the tree-sitter
    grammars in the local `runtime` folder.
 
 > 💡 If you do not want to fetch or build grammars, set an environment variable `FEFIX_DISABLE_AUTO_GRAMMAR_BUILD`
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
-> grammars with `fx --grammar fetch` and compile them with
-> `fx --grammar build`. This will install them in
+> grammars with `ffx --grammar fetch` and compile them with
+> `ffx --grammar build`. This will install them in
 > the `runtime` directory within the user's fefix config directory (more
 > [details below](#multiple-runtime-directories)).
 
@@ -115,7 +115,7 @@ following order:
 5. `runtime/` directory of the cargo workspace containing either the fefix
    executable or the current working directory. This is a fallback for
    directly running a binary built from a source checkout (for example
-   `target/release/fx`) without setting `FEFIX_RUNTIME` or creating a config
+   `target/release/ffx`) without setting `FEFIX_RUNTIME` or creating a config
    symlink; it only applies when the binary is run from inside a checkout.
 6. `runtime/` subdirectory of path to fefix executable.
 
@@ -134,9 +134,9 @@ script could follow are:
 1. `export FEFIX_DEFAULT_RUNTIME=/usr/lib/fefix/runtime`
 1. `cargo build --profile opt --locked`
 1. `cp -r runtime $BUILD_DIR/usr/lib/fefix/`
-1. `cp target/opt/fx $BUILD_DIR/usr/bin/fx`
+1. `cp target/opt/ffx $BUILD_DIR/usr/bin/ffx`
 
-This way the resulting `fx` binary will always look for its runtime directory in
+This way the resulting `ffx` binary will always look for its runtime directory in
 `/usr/lib/fefix/runtime` if the user has no custom runtime in `~/.config/fefix`
 or `FEFIX_RUNTIME`.
 
@@ -146,7 +146,7 @@ To make sure everything is set up as expected you should run the fefix health
 check:
 
 ```sh
-fx --health
+ffx --health
 ```
 
 For more information on the health check results refer to
@@ -166,7 +166,7 @@ cp contrib/helix.png ~/.icons # or ~/.local/share/icons
 It is recommended to convert the links in the `.desktop` file to absolute paths to avoid potential problems:
 
 ```sh
-sed -i -e "s|Exec=fx %F|Exec=$(readlink -f ~/.cargo/bin/fx) %F|g" \
+sed -i -e "s|Exec=ffx %F|Exec=$(readlink -f ~/.cargo/bin/ffx) %F|g" \
   -e "s|Icon=Helix|Icon=$(readlink -f ~/.icons/helix.png)|g" ~/.local/share/applications/Helix.desktop
 ```
 
@@ -174,7 +174,7 @@ To use another terminal than the system default, you can modify the `.desktop`
 file. For example, to use `kitty`:
 
 ```sh
-sed -i "s|Exec=fx %F|Exec=kitty fx %F|g" ~/.local/share/applications/Helix.desktop
+sed -i "s|Exec=ffx %F|Exec=kitty ffx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
 
@@ -198,7 +198,7 @@ cargo deb -- --locked
 ```
 
 > 💡 This locks you into the `--release` profile. But you can also build fefix in any way you like.
-> As long as you leave a `target/release/fx` file, it will get packaged with `cargo deb --no-build`
+> As long as you leave a `target/release/ffx` file, it will get packaged with `cargo deb --no-build`
 
 > 💡 Don't worry about the following:
 > ```

@@ -60,8 +60,8 @@ below.
 ## Common issues
 
 - If you encounter errors when running fefix after switching branches, you may
-  need to update the tree-sitter grammars. Run the command `fx --grammar fetch`
-  to fetch the grammars and `fx --grammar build` to build any out-of-date
+  need to update the tree-sitter grammars. Run the command `ffx --grammar fetch`
+  to fetch the grammars and `ffx --grammar build` to build any out-of-date
   grammars.
 - If a parser is causing a segfault, or you want to remove it, make sure to
   remove the compiled parser located at `runtime/grammars/<name>.so`.
