@@ -251,7 +251,7 @@ jobs:
               chmod +x $pkgname/ffx$exe
 
               if [[ "$platform" = "x86_64-linux" ]]; then
-                  mv bins-$platform/helix-*.AppImage* dist/
+                  mv bins-$platform/fefix-*.AppImage* dist/
                   mv bins-$platform/*.deb dist/
               fi
 
