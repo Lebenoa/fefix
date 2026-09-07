@@ -29,29 +29,36 @@ All shortcuts/keymaps can be found [in the book](./book/src/keymap.md).
 # Differences from upstream
 
 This fork tracks [upstream Helix](https://github.com/helix-editor/helix) (currently
-based on commit `079a789e`, 2026-07-23) with the following addition:
+based on commit `079a789e`, 2026-07-23) with the following additions:
 
 - **File tree window** — a VS Code / Zed style file tree docked to the left
-  of the editor, toggled with `<space>t` (workspace root, revealing the
-  current buffer) while `<space>T` opens or re-roots it at the current
-  buffer's directory. It is a persistent window, not a modal overlay:
+  of the editor. With `[editor.file-explorer] mode = "tree"` (set `mode` to
+  `"tree"`; the default `"picker"` keeps the modal picker), `<space>e`
+  toggles the tree at the workspace root and `<space>.` opens or re-roots it
+  at the current buffer's directory; `fx <dir>` (e.g. `fx .`) opens the tree
+  at that directory too. It is a persistent window, not a modal overlay:
   `enter` on a file opens it and moves focus to the editor while the window
-  stays open, `esc` moves focus from the tree to the editor, and clicking in
-  either pane focuses it. Directories expand and collapse lazily
-  (`<right>`/`<left>` or `l`/`h`, `enter` to toggle), and `r` refreshes the
-  selected directory. Backed by the `file_tree`,
-  `file_tree_in_current_buffer_directory`, `file_tree_in_current_directory`
-  and `close_file_tree` commands.
+  stays open, `esc` moves focus from the tree to the editor, `q` closes it
+  while focused, and clicking in either pane focuses it. Directories expand
+  and collapse in place (`<right>`/`<left>` or `l`/`h`, `enter` to toggle),
+  `r` refreshes the selected directory, and `/` filters the visible entries
+  by path. Backed by the `file_tree`, `file_tree_in_current_buffer_directory`,
+  `file_tree_in_current_directory` and `close_file_tree` commands.
 
   Behavior is configured in the `[editor.file-tree]` section (ignore handling,
-  `width`, and `icons`). The content width starts at the `width` option
-  (default 30 columns) and can be resized live by dragging the separator
-  between the tree and the editor with the mouse. Icons use Nerd Font glyphs (v3 or later): `icons = "auto"`
-  (the default) enables them when the terminal is detected as Nerd Font
-  capable, `icons = "nerdfont"` always renders them and `icons = "ascii"`
-  falls back to ASCII expand/collapse arrows. Folders get an open/closed
-  folder glyph and files a type-specific glyph (rust, markdown, git, etc.).
-  Expanded directories are remembered across tree sessions. With `[editor.file-explorer] mode = "tree"`, `fx <directory>` (e.g. `fx .`) opens the tree docked at that directory instead of a file picker.
+  `width`, `icons`, and `folder-icons`). The content width starts at the
+  `width` option (default 30 columns) and can be resized live by dragging the
+  separator between the tree and the editor with the mouse. Icons use Nerd
+  Font glyphs (v3 or later): `icons = "auto"` (the default) enables them when
+  the terminal is detected as Nerd Font capable, `icons = "nerdfont"` always
+  renders them and `icons = "ascii"` falls back to ASCII expand/collapse
+  arrows. Folders get an open/closed folder glyph (or a special glyph for
+  well-known folder names) and files a type-specific glyph (rust, markdown,
+  git, etc.). Expanded directories are remembered across tree sessions.
+- **Auto-reload** — unmodified buffers reload immediately when their file
+  changes on disk, controlled by the new `[editor] auto-reload` option
+  (default `true`). Reload is skipped for buffers with unsaved changes and
+  while in insert mode.
 
 See the [CHANGELOG](./CHANGELOG.md) for details.
 
