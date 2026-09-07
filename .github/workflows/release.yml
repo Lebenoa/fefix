@@ -33,10 +33,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v7
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
         with:
-          toolchain: stable
+          toolchain: nightly
 
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
@@ -67,28 +67,28 @@ jobs:
           # WARN: When changing this to a newer version, make sure that the GLIBC isnt too new, as this can cause issues
           # with portablity on older systems that dont follow ubuntus more rapid release cadence.
           os: ubuntu-22.04
-          rust: stable
+          rust: nightly
           target: x86_64-unknown-linux-gnu
         - build: aarch64-linux
           # Version should be kept in lockstep with the x86_64 version
           os: ubuntu-22.04-arm
-          rust: stable
+          rust: nightly
           target: aarch64-unknown-linux-gnu
         - build: x86_64-macos
           os: macos-latest
-          rust: stable
+          rust: nightly
           target: x86_64-apple-darwin
         - build: x86_64-windows
           os: windows-latest
-          rust: stable
+          rust: nightly
           target: x86_64-pc-windows-msvc
         - build: aarch64-macos
           os: macos-latest
-          rust: stable
+          rust: nightly
           target: aarch64-apple-darwin
         - build: aarch64-windows
           os: windows-11-arm
-          rust: stable
+          rust: nightly
           target: aarch64-pc-windows-msvc
 
     steps:
