@@ -82,14 +82,26 @@ impl Registers {
             '_' => Ok(()),
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
             '*' | '+' => {
-                self.clipboard_provider.load().set_contents(
-                    &values.join(NATIVE_LINE_ENDING.as_str()),
-                    match name {
-                        '+' => ClipboardType::Clipboard,
-                        '*' => ClipboardType::Selection,
-                        _ => unreachable!(),
-                    },
-                )?;
+                let clipboard_type = match name {
+                    '+' => ClipboardType::Clipboard,
+                    '*' => ClipboardType::Selection,
+                    _ => unreachable!(),
+                };
+                // Push to the system clipboard on a background thread so a
+                // slow or hung provider (e.g. `termux-clipboard-set`) can
+                // never stall the editor event loop — mirroring how Nvim runs
+                // its clipboard provider as an async job. The local register
+                // cache below is updated synchronously; only the external push
+                // is deferred. `ClipboardProvider` is `Send + 'static`, so it
+                // can cross the thread boundary.
+                let provider = self.clipboard_provider.load().clone();
+                let contents = values.join(NATIVE_LINE_ENDING.as_str());
+                std::thread::spawn(move || {
+                    if let Err(err) = provider.set_contents(&contents, clipboard_type) {
+                        log::error!("failed to write to clipboard: {err}");
+                    }
+                });
+
                 values.reverse();
                 self.inner.insert(name, values);
                 Ok(())
@@ -127,9 +139,13 @@ impl Registers {
                     value.push_str(NATIVE_LINE_ENDING.as_str());
                 }
                 value.push_str(&contents);
-                self.clipboard_provider
-                    .load()
-                    .set_contents(&value, clipboard_type)?;
+                let provider = self.clipboard_provider.load().clone();
+                let value = value.clone();
+                std::thread::spawn(move || {
+                    if let Err(err) = provider.set_contents(&value, clipboard_type) {
+                        log::error!("failed to write to clipboard: {err}");
+                    }
+                });
 
                 Ok(())
             }
