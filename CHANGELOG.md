@@ -22,7 +22,11 @@ Packaging:
 
 # Unreleased
 
-fefix is a fork of [Helix](https://github.com/helix-editor/helix). Entries below cover this fork's changes; older sections are inherited upstream release notes.
+fefix is a fork of [Helix](https://github.com/helix-editor/helix).
+
+# 26.9.1 (2026-09-08)
+
+fefix is a fork of [Helix](https://github.com/helix-editor/helix). This release fixes a clipboard hang on Termux, adds a `space-E` file-explorer binding, and drops the AppImage from releases.
 
 Features:
 
@@ -39,7 +43,16 @@ Features:
 
 Bug fixes:
 
-* Clipboard yank/paste no longer freezes the editor when the clipboard provider command hangs (e.g. `termux-clipboard-set`/`get` that never respond). The provider subprocess is now bounded by a 5s timeout and killed on expiry, returning a `ClipboardError` instead of blocking the event loop forever; provider input and output are read off the main thread so a backpressured pipe can't deadlock the wait.
+* Clipboard yank/paste no longer freezes the editor when the clipboard provider command hangs (e.g. `termux-clipboard-set`/`get` that never respond). The provider subprocess is now bounded by a 5s timeout and killed on expiry; provider input and output are read off the main thread so a backpressured pipe can't deadlock the wait.
+* Yank-to-clipboard is now non-blocking: the system clipboard push runs on a background thread (like Nvim's async provider), so a slow or hung provider can never stall the editor event loop — not even for the 5s timeout window.
+* Yank no longer claims false success: the status shows `yanking N selections to clipboard…` while the write is in flight, then reports the real outcome — `copied to system clipboard` on success or `failed to write to system clipboard: …` on failure — instead of reporting `yanked to register +` even when the clipboard write failed.
+* The editor binary is renamed from `fx` to `ffx` (avoids a name collision with an existing `fx`).
+
+Other changes:
+
+* New default binding `<space>E` opens the file explorer (and, with `[editor.file-explorer] mode = "tree"`, the file tree window) at the current buffer's directory.
+* The AppImage is no longer published; releases ship standalone tar.xz/zip archives and a `.deb`.
+* Release builds use the nightly toolchain (matching the repo's `rust-toolchain.toml`).
 
 # 25.07.1 (2025-07-18)
 
