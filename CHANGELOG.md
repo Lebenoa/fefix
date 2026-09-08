@@ -24,7 +24,7 @@ Packaging:
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix).
 
-# 26.9.1 (2026-09-08)
+# 26.09.1 (2026-09-08)
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix). This release fixes a clipboard hang on Termux, adds a `space-E` file-explorer binding, and drops the AppImage from releases.
 

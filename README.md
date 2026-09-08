@@ -90,9 +90,9 @@ self-contained — no extra setup needed.
 
 ```sh
 # download and extract the archive matching your architecture
-curl -LO https://github.com/Lebenoa/fefix/releases/latest/download/fefix-26.9.1-x86_64-linux.tar.xz
-tar xJf fefix-26.9.1-x86_64-linux.tar.xz
-cd fefix-26.9.1-x86_64-linux
+curl -LO https://github.com/Lebenoa/fefix/releases/latest/download/fefix-26.09.1-x86_64-linux.tar.xz
+tar xJf fefix-26.09.1-x86_64-linux.tar.xz
+cd fefix-26.09.1-x86_64-linux
 
 # run it from anywhere (runtime/ is resolved relative to the binary)
 ./ffx --version
@@ -121,7 +121,7 @@ way.
 Install the `.deb` asset directly:
 
 ```sh
-sudo dpkg -i fefix-v26.9.1-x86_64-linux.deb   # if named helix_26.9.1-1_amd64.deb
+sudo dpkg -i fefix-v26.09.1-x86_64-linux.deb   # if named helix_26.09.1-1_amd64.deb
 ```
 
 ### Building from source
