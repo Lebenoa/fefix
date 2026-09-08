@@ -97,9 +97,21 @@ impl Registers {
                 let provider = self.clipboard_provider.load().clone();
                 let contents = values.join(NATIVE_LINE_ENDING.as_str());
                 std::thread::spawn(move || {
-                    if let Err(err) = provider.set_contents(&contents, clipboard_type) {
-                        log::error!("failed to write to clipboard: {err}");
-                    }
+                    let kind = match clipboard_type {
+                        ClipboardType::Clipboard => "system",
+                        ClipboardType::Selection => "primary",
+                    };
+                    let _ = match provider.set_contents(&contents, clipboard_type) {
+                        Ok(()) => helix_event::status::report_blocking(
+                            helix_event::status::StatusMessage {
+                                severity: helix_event::status::Severity::Info,
+                                message: format!("copied to {kind} clipboard").into(),
+                            },
+                        ),
+                        Err(err) => helix_event::status::report_blocking(anyhow::anyhow!(
+                            "failed to write to {kind} clipboard: {err}"
+                        )),
+                    };
                 });
 
                 values.reverse();
@@ -142,9 +154,21 @@ impl Registers {
                 let provider = self.clipboard_provider.load().clone();
                 let value = value.clone();
                 std::thread::spawn(move || {
-                    if let Err(err) = provider.set_contents(&value, clipboard_type) {
-                        log::error!("failed to write to clipboard: {err}");
-                    }
+                    let kind = match clipboard_type {
+                        ClipboardType::Clipboard => "system",
+                        ClipboardType::Selection => "primary",
+                    };
+                    let _ = match provider.set_contents(&value, clipboard_type) {
+                        Ok(()) => helix_event::status::report_blocking(
+                            helix_event::status::StatusMessage {
+                                severity: helix_event::status::Severity::Info,
+                                message: format!("copied to {kind} clipboard").into(),
+                            },
+                        ),
+                        Err(err) => helix_event::status::report_blocking(anyhow::anyhow!(
+                            "failed to write to {kind} clipboard: {err}"
+                        )),
+                    };
                 });
 
                 Ok(())

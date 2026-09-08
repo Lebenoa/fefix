@@ -4955,10 +4955,24 @@ fn yank_impl(editor: &mut Editor, register: char) {
     let selections = values.len();
 
     match editor.registers.write(register, values) {
-        Ok(_) => editor.set_status(format!(
-            "yanked {selections} selection{} to register {register}",
-            if selections == 1 { "" } else { "s" }
-        )),
+        Ok(_) => {
+            // `+` / `*` are the system/primary clipboard. The write to the
+            // local register is immediate, but the external clipboard push is
+            // asynchronous (so a hung provider can't freeze the editor); the
+            // true result is reported by the background thread, so don't
+            // claim the text reached the clipboard yet.
+            if register == '+' || register == '*' {
+                editor.set_status(format!(
+                    "yanking {selections} selection{} to clipboard…",
+                    if selections == 1 { "" } else { "s" }
+                ));
+            } else {
+                editor.set_status(format!(
+                    "yanked {selections} selection{} to register {register}",
+                    if selections == 1 { "" } else { "s" }
+                ));
+            }
+        }
         Err(err) => editor.set_error(err.to_string()),
     }
 }
