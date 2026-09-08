@@ -25,6 +25,8 @@ pub enum ClipboardError {
     StdinWriteFailed,
     #[error("clipboard provider did not return any contents")]
     MissingStdout,
+    #[error("clipboard provider did not respond before the timeout")]
+    TimedOut,
     #[error("This clipboard provider does not support reading")]
     ReadingNotSupported,
 }
@@ -420,7 +422,6 @@ mod external {
         input: Option<&str>,
         pipe_output: bool,
     ) -> Result<Option<String>> {
-        use std::io::Write;
         use std::process::{Command, Stdio};
 
         let stdin = input.map(|_| Stdio::piped()).unwrap_or_else(Stdio::null);
@@ -450,15 +451,90 @@ mod external {
 
         let mut child = command_mut.spawn()?;
 
-        if let Some(input) = input {
-            let mut stdin = child.stdin.take().ok_or(ClipboardError::StdinWriteFailed)?;
-            stdin
-                .write_all(input.as_bytes())
+        // Write provider input on a thread so a provider that never drains its
+        // stdin cannot block the editor; the join below is bounded like the
+        // wait. A hung provider (e.g. a Termux clipboard broker that never
+        // responds) is killed rather than freezing the editor.
+        let mut stdin_joiner = input.map(|input| {
+            let mut stdin = child.stdin.take().expect("stdin was piped");
+            let bytes = input.as_bytes().to_vec();
+            std::thread::spawn(move || {
+                use std::io::Write;
+                stdin.write_all(&bytes)
+            })
+        });
+
+        // Wait for the provider with a timeout so a hung command cannot freeze
+        // the editor. Read piped output on a thread so a provider writing a
+        // lot of data doesn't deadlock on a full pipe while we poll.
+        let stdout_reader = pipe_output
+            .then(|| {
+                let mut stdout = child.stdout.take()?;
+                Some(std::thread::spawn(move || {
+                    use std::io::Read;
+                    let mut buf = Vec::new();
+                    stdout.read_to_end(&mut buf).ok()?;
+                    Some(buf)
+                }))
+            })
+            .flatten();
+        let mut stderr_reader = child.stderr.take().map(|mut stderr| {
+            std::thread::spawn(move || {
+                use std::io::Read;
+                let mut buf = Vec::new();
+                stderr.read_to_end(&mut buf).ok()?;
+                Some(buf)
+            })
+        });
+
+        let timeout = std::time::Duration::from_secs(5);
+        let deadline = std::time::Instant::now() + timeout;
+        let status = loop {
+            match child.try_wait() {
+                Ok(Some(status)) => break status,
+                Ok(None) if std::time::Instant::now() < deadline => {
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+                _ => {
+                    // Timed out (or a wait error): kill and give up so the
+                    // editor does not hang on the clipboard provider.
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    if let Some(joiner) = stdin_joiner.take() {
+                        let _ = joiner.join();
+                    }
+                    drop(stdout_reader);
+                    if let Some(joiner) = stderr_reader.take() {
+                        let _ = joiner.join();
+                    }
+                    log::warn!(
+                        "clipboard provider {} timed out after {}ms; killing it",
+                        cmd.command,
+                        timeout.as_millis()
+                    );
+                    return Err(ClipboardError::TimedOut);
+                }
+            }
+        };
+
+        if let Some(joiner) = stdin_joiner.take() {
+            joiner
+                .join()
+                .map_err(|_| ClipboardError::StdinWriteFailed)?
                 .map_err(|_| ClipboardError::StdinWriteFailed)?;
         }
 
-        // TODO: add timer?
-        let output = child.wait_with_output()?;
+        let output = std::process::Output {
+            status,
+            stdout: stdout_reader
+                .and_then(|joiner| joiner.join().ok())
+                .flatten()
+                .unwrap_or_default(),
+            stderr: stderr_reader
+                .and_then(|joiner| joiner.join().ok())
+                .flatten()
+                .unwrap_or_default(),
+        };
 
         if !output.status.success() {
             log::error!(
