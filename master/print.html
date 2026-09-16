@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-7b39d667.js";
+            window.path_to_searchindex_js = "searchindex-91b8cf69.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e3ed18d8.js"></script>
@@ -2720,12 +2720,24 @@ auto-reload = false # disable automatic reload on external file change
 </code></pre>
 <p>This is an fefix-only key (commit <code>d212cd03</code>). Upstream Helix has no
 equivalent; it requires a manual reload.</p>
-<h3 id="editorfile-tree"><a class="header" href="#editorfile-tree"><code>[editor.file-tree]</code></a></h3>
-<p><code>file-tree</code> — Configuration for the persistent, dockable file-tree window, an
-fefix-only feature (upstream Helix only ships the modal <code>file-explorer</code>). The
-window is toggled with the file-tree keybinding (see the keymap) and can be
-resized by dragging the separator with the mouse.</p>
-<p>Defaults shown:</p>
+<h3 id="editorfile-explorer-mode-and-editorfile-tree"><a class="header" href="#editorfile-explorer-mode-and-editorfile-tree"><code>[editor.file-explorer] mode</code> and <code>[editor.file-tree]</code></a></h3>
+<p>The file tree is a <strong>style of the file explorer</strong>, not a separate feature.
+Upstream Helix ships only the modal explorer; fefix adds a <code>mode</code> field to
+<code>[editor.file-explorer]</code> plus an <code>[editor.file-tree]</code> section that the tree
+style consumes.</p>
+<pre><code class="language-toml">[editor.file-explorer]
+mode = "picker"   # "picker" (default) | "tree"
+</code></pre>
+<ul>
+<li><code>mode = "picker"</code> — the modal picker overlay listing one directory at a
+time; pressing enter on a directory descends into it. This matches upstream
+Helix behavior.</li>
+<li><code>mode = "tree"</code> — the persistent file-tree window docked to the left of the
+editor, expanding directories in place. It reads the <code>[editor.file-tree]</code>
+settings below (ignore behaviour, width, icons) and can be resized by
+dragging the separator with the mouse.</li>
+</ul>
+<p><code>[editor.file-tree]</code> — configuration for the tree style. Defaults shown:</p>
 <pre><code class="language-toml">[editor.file-tree]
 hidden = true           # hide hidden files (dotfiles)
 follow-symlinks = false # follow directory symlinks
