@@ -52,14 +52,27 @@ auto-reload = false # disable automatic reload on external file change
 This is an fefix-only key (commit `d212cd03`). Upstream Helix has no
 equivalent; it requires a manual reload.
 
-### `[editor.file-tree]`
+### `[editor.file-explorer] mode` and `[editor.file-tree]`
 
-`file-tree` — Configuration for the persistent, dockable file-tree window, an
-fefix-only feature (upstream Helix only ships the modal `file-explorer`). The
-window is toggled with the file-tree keybinding (see the keymap) and can be
-resized by dragging the separator with the mouse.
+The file tree is a **style of the file explorer**, not a separate feature.
+Upstream Helix ships only the modal explorer; fefix adds a `mode` field to
+`[editor.file-explorer]` plus an `[editor.file-tree]` section that the tree
+style consumes.
 
-Defaults shown:
+```toml
+[editor.file-explorer]
+mode = "picker"   # "picker" (default) | "tree"
+```
+
+- `mode = "picker"` — the modal picker overlay listing one directory at a
+  time; pressing enter on a directory descends into it. This matches upstream
+  Helix behavior.
+- `mode = "tree"` — the persistent file-tree window docked to the left of the
+  editor, expanding directories in place. It reads the `[editor.file-tree]`
+  settings below (ignore behaviour, width, icons) and can be resized by
+  dragging the separator with the mouse.
+
+`[editor.file-tree]` — configuration for the tree style. Defaults shown:
 
 ```toml
 [editor.file-tree]
