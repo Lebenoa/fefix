@@ -10,7 +10,8 @@
 //! visible entries narrow to paths containing the typed query
 //! (case-insensitive). The first typed character loads the whole tree so
 //! matches are found anywhere, not just under expanded directories; `Esc`
-//! clears the filter and restores the tree.
+//! clears the filter and restores the tree. `?` shows a which-key style popup
+//! listing every binding while the tree is focused.
 
 use std::{
     cell::RefCell,
@@ -21,8 +22,9 @@ use std::{
 
 use helix_view::{
     editor::{Action, FileTreeConfig},
-    graphics::{CursorKind, Rect},
+    graphics::{CursorKind, Margin, Modifier, Rect},
     input::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
+    theme::Theme,
     Editor,
 };
 use tui::buffer::Buffer as Surface;
@@ -486,6 +488,10 @@ pub struct FileTree {
     /// the top of the tree and the visible entries are narrowed to the
     /// `filter` query.
     filtering: bool,
+    /// Whether the which-key style keymap modal is open (toggled with `?`
+    /// while the tree is focused): the bindings overlay the tree, and any
+    /// key closes them and then runs that binding.
+    show_keymap: bool,
     /// The current filter query (see [`FileTree::filtering`]). Empty when no
     /// filter is active.
     filter: String,
@@ -515,6 +521,7 @@ impl FileTree {
             icons,
             focused: true,
             filtering: false,
+            show_keymap: false,
             filter: String::new(),
             resizing: None,
             max_width: 0,
@@ -603,6 +610,11 @@ impl FileTree {
         let MouseEvent {
             kind, row, column, ..
         } = *event;
+        // Any click closes the keymap modal; the click itself is then
+        // handled normally below.
+        if self.show_keymap && matches!(kind, MouseEventKind::Down(_)) {
+            self.show_keymap = false;
+        }
         let area = self.area;
         // The separator column doubles as the resize handle. Only events over
         // the tree's own columns belong to the tree; anything else falls
@@ -859,7 +871,32 @@ impl Component for FileTree {
             }
         }
 
+        // While the keymap modal is open any key closes it first; the key
+        // then falls through to the match below, so the listed bindings work
+        // straight from the modal. `Esc` only dismisses it.
+        if self.show_keymap {
+            self.show_keymap = false;
+            match key_event {
+                key!(Esc) | ctrl!('c') => return EventResult::Consumed(None),
+                _ => {}
+            }
+        }
+
         match key_event {
+            // `?` is Shift+/; terminals disagree on how they report it:
+            // legacy terminals send just the shifted character `Char('?')`,
+            // crossterm's "disambiguate only" / Windows Terminal send the
+            // shifted character with the SHIFT modifier set, and the full
+            // kitty protocol sends the physical key `Char('/')` with SHIFT.
+            // Accept all three; Ctrl/Alt-? is not the help key.
+            KeyEvent { code: KeyCode::Char(c), modifiers }
+                if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+                    && (c == '?' || (c == '/' && modifiers.contains(KeyModifiers::SHIFT))) =>
+            {
+                // Which-key style help: overlay the bindings; any key closes
+                // the overlay and runs that binding (see above).
+                self.show_keymap = true;
+            }
             key!('/') => {
                 // Start filtering the tree to matching paths.
                 self.filtering = true;
@@ -1032,6 +1069,11 @@ impl Component for FileTree {
             };
             surface.set_stringn(tree_area.x, y, &line, tree_area.width as usize, style);
         }
+
+        // The which-key style keymap modal overlays everything while open.
+        if self.show_keymap {
+            render_keymap(surface, &ctx.editor.theme);
+        }
     }
 
     fn cursor(&self, _area: Rect, _ctx: &Editor) -> (Option<helix_core::Position>, CursorKind) {
@@ -1040,6 +1082,72 @@ impl Component for FileTree {
 
     fn id(&self) -> Option<&'static str> {
         Some(ID)
+    }
+}
+
+/// Draw the which-key style keymap modal, centred over the whole screen so it
+/// stays readable regardless of the tree's width. Toggled with `?` while the
+/// tree is focused; in `handle_event` any key closes it and then runs the
+/// binding, mirroring which-key behaviour.
+fn render_keymap(surface: &mut Surface, theme: &Theme) {
+    use tui::widgets::{Block, Widget};
+
+    const BINDINGS: &[(&str, &str)] = &[
+        ("k/↑, j/↓", "move selection"),
+        ("ctrl-p/n", "move selection (alternate)"),
+        ("ctrl-u/d", "jump 10 entries"),
+        ("Home/End", "jump to first/last entry"),
+        ("h/←, l/→", "collapse/expand, or open"),
+        ("Enter", "open file or toggle directory"),
+        ("/", "filter the tree"),
+        ("r", "refresh selected directory"),
+        ("q", "close the tree"),
+        ("Esc", "hand focus back to the editor"),
+        ("?", "show this help"),
+    ];
+
+    let viewport = *surface.area();
+    // Heading row, blank row, then one row per binding, plus the borders.
+    let height = (BINDINGS.len() as u16 + 4).min(viewport.height.saturating_sub(2));
+    let key_col = 20_u16;
+    let width = (key_col + 32).min(viewport.width.saturating_sub(2));
+    if height < BINDINGS.len() as u16 + 2 || width < 32 {
+        return;
+    }
+    let modal = Rect {
+        x: viewport.x + (viewport.width.saturating_sub(width)) / 2,
+        y: viewport.y + (viewport.height.saturating_sub(height)) / 2,
+        width,
+        height,
+    };
+
+    surface.clear_with(modal, theme.get("ui.popup"));
+    Widget::render(Block::bordered(), modal, surface);
+
+    let inner = modal.inner(Margin::all(1));
+    let key_style = theme.get("ui.text").add_modifier(Modifier::BOLD);
+    let desc_style = theme.get("ui.help");
+    surface.set_stringn(
+        inner.x + 1,
+        inner.y,
+        "File tree keys",
+        inner.width.saturating_sub(2) as usize,
+        theme.get("ui.text.focus"),
+    );
+    let mut y = inner.y + 2;
+    for (keys, desc) in BINDINGS {
+        if y >= inner.bottom() {
+            break;
+        }
+        surface.set_stringn(inner.x + 1, y, keys, key_col as usize, key_style);
+        surface.set_stringn(
+            inner.x + 1 + key_col,
+            y,
+            desc,
+            inner.width.saturating_sub(2 + key_col) as usize,
+            desc_style,
+        );
+        y += 1;
     }
 }
 
@@ -1093,7 +1201,8 @@ mod tests {
         fs::write(path, "").unwrap();
     }
 
-    /// The paths of the visible entries, relative to the tree root.
+    /// The paths of the visible entries, relative to the tree root, with
+    /// `/` separators so assertions read the same on every platform.
     fn visible_paths(tree: &Tree) -> Vec<String> {
         tree.visible()
             .iter()
@@ -1104,6 +1213,7 @@ mod tests {
                     .unwrap_or(&entry.path)
                     .display()
                     .to_string()
+                    .replace('\\', "/")
             })
             .collect()
     }
@@ -1384,5 +1494,43 @@ mod tests {
         };
         let tree = Tree::new(tmp.path().to_path_buf(), config);
         assert_eq!(visible_paths(&tree), vec!["", "visible.rs"]);
+    }
+
+    #[test]
+    fn keymap_modal_renders_bindings_centred() {
+        use helix_view::theme::DEFAULT_THEME;
+
+        // A helper reconstructing a row of the surface as text (first
+        // grapheme of each cell), so the drawn modal can be searched.
+        fn row_text(surface: &Surface, y: u16) -> String {
+            (0..surface.area().width)
+                .map(|x| surface[(x, y)].symbol.chars().next().unwrap_or(' '))
+                .collect()
+        }
+
+        let mut surface = Surface::empty(Rect::new(0, 0, 80, 24));
+        render_keymap(&mut surface, &DEFAULT_THEME);
+
+        // The modal is centred: the heading sits above the bindings, both
+        // within the middle of the screen.
+        let rows: Vec<String> = (0..24).map(|y| row_text(&surface, y)).collect();
+        let heading = rows
+            .iter()
+            .position(|row| row.contains("File tree keys"))
+            .expect("heading drawn");
+        assert!(heading > 0 && heading < 23, "heading not centred: {heading}");
+        let bindings: Vec<usize> = rows
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| row.contains("move selection") || row.contains("show this help"))
+            .map(|(y, _)| y)
+            .collect();
+        assert_eq!(bindings.len(), 3, "first and last binding rows drawn: {rows:?}");
+        // The key column and its description share a row.
+        assert!(rows[bindings[0]].contains("k/↑, j/↓"));
+        assert!(rows[bindings[0]].contains("move selection"));
+        assert!(rows[bindings[2]].contains("show this help"));
+        // A bordered popup: the top border row contains corner/edge glyphs.
+        assert!(rows[heading - 1].contains('┌') || rows[heading - 1].contains('─'));
     }
 }

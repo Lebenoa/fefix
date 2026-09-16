@@ -46,7 +46,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, FileExplorerMode, Motion},
+    editor::{Action, Motion},
     expansion,
     info::Info,
     input::KeyEvent,
@@ -3225,10 +3225,10 @@ fn file_explorer(cx: &mut Context) {
         return;
     }
 
-    // With `[editor.file-explorer] mode = "tree"`, the explorer command
+    // With `[editor.file-tree] enable = true`, the explorer command
     // toggles the persistent file tree window instead of showing the modal
     // picker, so it both opens and closes the window at the workspace root.
-    if cx.editor.config().file_explorer.mode == FileExplorerMode::Tree {
+    if cx.editor.config().file_tree.enable {
         file_tree(cx);
         return;
     }
@@ -3260,9 +3260,9 @@ fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
-    // With `[editor.file-explorer] mode = "tree"`, the explorer commands open
+    // With `[editor.file-tree] enable = true`, the explorer commands open
     // the persistent file tree window instead of the modal picker.
-    if cx.editor.config().file_explorer.mode == FileExplorerMode::Tree {
+    if cx.editor.config().file_tree.enable {
         open_file_tree(cx, path);
         return;
     }
@@ -3280,9 +3280,9 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
         return;
     }
 
-    // With `[editor.file-explorer] mode = "tree"`, the explorer commands open
+    // With `[editor.file-tree] enable = true`, the explorer commands open
     // the persistent file tree window instead of the modal picker.
-    if cx.editor.config().file_explorer.mode == FileExplorerMode::Tree {
+    if cx.editor.config().file_tree.enable {
         open_file_tree(cx, cwd);
         return;
     }

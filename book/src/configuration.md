@@ -52,43 +52,38 @@ auto-reload = false # disable automatic reload on external file change
 This is an fefix-only key (commit `d212cd03`). Upstream Helix has no
 equivalent; it requires a manual reload.
 
-### `[editor.file-explorer] mode` and `[editor.file-tree]`
+### `[editor.file-tree]`
 
-The file tree is a **style of the file explorer**, not a separate feature.
-Upstream Helix ships only the modal explorer; fefix adds a `mode` field to
-`[editor.file-explorer]` plus an `[editor.file-tree]` section that the tree
-style consumes.
-
-```toml
-[editor.file-explorer]
-mode = "picker"   # "picker" (default) | "tree"
-```
-
-- `mode = "picker"` — the modal picker overlay listing one directory at a
-  time; pressing enter on a directory descends into it. This matches upstream
-  Helix behavior.
-- `mode = "tree"` — the persistent file-tree window docked to the left of the
-  editor, expanding directories in place. It reads the `[editor.file-tree]`
-  settings below (ignore behaviour, width, icons) and can be resized by
-  dragging the separator with the mouse.
-
-`[editor.file-tree]` — configuration for the tree style. Defaults shown:
+The file tree is an fefix extension of the file explorer. Upstream Helix
+ships only the modal explorer; fefix adds an `[editor.file-tree]` section
+that turns the file explorer commands (`<space>e`, `<space>.`) into the
+persistent file-tree window and shows a directory passed on the command line
+there instead of a modal picker.
 
 ```toml
 [editor.file-tree]
-hidden = true           # hide hidden files (dotfiles)
-follow-symlinks = false # follow directory symlinks
-parents = true          # read upsearch .ignore / .gitignore from parent dirs
-ignore = true           # read .ignore files
-git-ignore = true       # read .gitignore files
-git-global = true       # read the global gitignore (core.excludesFile)
-git-exclude = true      # read .git/info/exclude
-width = 30              # preferred content width in columns
-icons = "auto"          # "auto" | "nerdfont" | "ascii"
+enable = false           # false (default) | true
+hidden = true            # hide hidden files (dotfiles)
+follow-symlinks = false  # follow directory symlinks
+parents = true           # read upsearch .ignore / .gitignore from parent dirs
+ignore = true            # read .ignore files
+git-ignore = true        # read .gitignore files
+git-global = true        # read the global gitignore (core.excludesFile)
+git-exclude = true       # read .git/info/exclude
+width = 30               # preferred content width in columns
+icons = "auto"           # "auto" | "nerdfont" | "ascii"
 # Override Nerd Font glyphs for well-known folder names (e.g. "src"):
 folder-icons = {}
 ```
 
+- `enable` — When `true`, the file explorer commands (`<space>e`, ...) open
+  the persistent file-tree window docked to the left of the editor instead of
+  the modal picker, and opening a directory as the first argument (`ffx .`)
+  shows it in the tree. The window expands directories in place, reads the
+  `[editor.file-tree]` settings below (ignore behaviour, width, icons) and can
+  be resized by dragging the separator with the mouse. Defaults to `false`
+  (the modal picker); the standalone `file_tree` command (`<space>t`,
+  `<space>T`) is always available regardless of this setting.
 - `width` — Preferred width of the file-tree content in columns (the separator
   column excluded). Can be adjusted per session by dragging the separator with
   the mouse. `0` falls back to this value for the session width. Defaults to
@@ -104,4 +99,3 @@ folder-icons = {}
   either as the glyph itself or as a `\UXXXXXXXX` escape, e.g.
   `folder-icons = { src = "\U000F107F" }`. Folders without an entry keep their
   built-in icon (or the generic folder glyph).
-

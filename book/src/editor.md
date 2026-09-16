@@ -252,14 +252,13 @@ Note that the ignore files consulted by the file explorer when `ignore` is set t
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `false`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `false`
 |`flatten-dirs` | Enables flattening single child directories | `true`
-|`mode` | How the file explorer commands present files: `"picker"` (the default) opens the modal picker that lists one directory at a time, `"tree"` opens the persistent file tree window instead. In `"tree"` mode the window uses the `[editor.file-tree]` settings (ignore behaviour, width, icons) and `flatten-dirs` is ignored | `"picker"`
 
 Example
 
 ```toml
-[editor.file-explorer]
+[editor.file-tree]
 # Open the file tree window from the file explorer keys (`<space>e`, `<space>.`).
-mode = "tree"
+enable = true
 ```
 
 ### `[editor.file-tree]` Section
@@ -268,6 +267,7 @@ Configure the file tree sidebar (see the `file_tree` command). Like the file exp
 
 | Key | Description | Default |
 |--|--|---------|
+|`enable` | Opens the persistent file tree window from the file explorer commands (`<space>e`, `<space>.`) instead of the modal picker, and shows a directory passed on the command line (`ffx .`) in the tree | `false`
 |`hidden` | Enables ignoring hidden files | `true`
 |`follow-symlinks` | Follow symlinks instead of ignoring them | `false`
 |`parents` | Enables reading ignore files from parent directories | `true`

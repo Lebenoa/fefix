@@ -24,6 +24,18 @@ Packaging:
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix).
 
+Breaking changes:
+
+* The `[editor.file-explorer] mode` option is removed. Enable the file tree
+  window for the explorer commands with `[editor.file-tree] enable = true`
+  instead.
+
+Features:
+
+* `?` while the file tree window is focused opens a which-key style popup
+  listing every tree binding; pressing any key closes it and runs that
+  binding.
+
 # 26.09.1 (2026-09-08)
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix). This release fixes a clipboard hang on Termux, adds a `space-E` file-explorer binding, and drops the AppImage from releases.

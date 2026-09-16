@@ -1,5 +1,4 @@
 use helix_term::application::Application;
-use helix_view::editor::FileExplorerMode;
 use tempfile::tempdir;
 
 use super::*;
@@ -931,12 +930,12 @@ async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn directory_argument_opens_tree_in_tree_mode() -> anyhow::Result<()> {
+async fn directory_argument_opens_tree_when_enabled() -> anyhow::Result<()> {
     // `ffx <directory>` (e.g. `ffx .`) shows the directory in the persistent
-    // file tree window when `[editor.file-explorer] mode = "tree"` is set.
+    // file tree window when `[editor.file-tree] enable = true` is set.
     let dir = tempdir()?;
     let mut config = test_config();
-    config.editor.file_explorer.mode = FileExplorerMode::Tree;
+    config.editor.file_tree.enable = true;
     let app = AppBuilder::new()
         .with_file(dir.path().to_path_buf(), Some(Default::default()))
         .with_config(config)
@@ -956,22 +955,28 @@ async fn directory_argument_keeps_picker_in_default_mode() -> anyhow::Result<()>
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn file_explorer_toggles_tree_in_tree_mode() -> anyhow::Result<()> {
-    // With `[editor.file-explorer] mode = "tree"`, `<space>e` opens the tree
+async fn file_explorer_toggles_tree_when_enabled() -> anyhow::Result<()> {
+    // With `[editor.file-tree] enable = true`, `<space>e` opens the tree
     // window on the first press and closes it on the second (it toggles).
     let mut config = test_config();
-    config.editor.file_explorer.mode = FileExplorerMode::Tree;
+    config.editor.file_tree.enable = true;
     let mut app = AppBuilder::new().with_config(config).build()?;
     assert!(!app.editor.file_tree_window.open);
     test_key_sequences(
         &mut app,
         vec![
-            (Some("<space>e"), Some(&|app: &Application| {
-                assert!(app.editor.file_tree_window.open);
-            })),
-            (Some("<esc><space>e"), Some(&|app: &Application| {
-                assert!(!app.editor.file_tree_window.open);
-            })),
+            (
+                Some("<space>e"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.file_tree_window.open);
+                }),
+            ),
+            (
+                Some("<esc><space>e"),
+                Some(&|app: &Application| {
+                    assert!(!app.editor.file_tree_window.open);
+                }),
+            ),
         ],
         false,
     )
@@ -982,18 +987,71 @@ async fn file_explorer_toggles_tree_in_tree_mode() -> anyhow::Result<()> {
 async fn q_closes_tree_while_focused() -> anyhow::Result<()> {
     // With the tree window focused, `q` closes it outright.
     let mut config = test_config();
-    config.editor.file_explorer.mode = FileExplorerMode::Tree;
+    config.editor.file_tree.enable = true;
     let mut app = AppBuilder::new().with_config(config).build()?;
     assert!(!app.editor.file_tree_window.open);
     test_key_sequences(
         &mut app,
         vec![
-            (Some("<space>e"), Some(&|app: &Application| {
-                assert!(app.editor.file_tree_window.open);
-            })),
-            (Some("q"), Some(&|app: &Application| {
-                assert!(!app.editor.file_tree_window.open);
-            })),
+            (
+                Some("<space>e"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.file_tree_window.open);
+                }),
+            ),
+            (
+                Some("q"),
+                Some(&|app: &Application| {
+                    assert!(!app.editor.file_tree_window.open);
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn question_mark_opens_keymap_modal() -> anyhow::Result<()> {
+    // `?` (Shift+/) opens the which-key style keymap modal while the tree is
+    // focused. Both representations are accepted: the shifted character `?`
+    // (legacy terminals) and the physical key `/` with the SHIFT modifier
+    // (Kitty keyboard protocol / enhanced reporting). Keys fall through it:
+    // `?<esc>` dismisses the modal without closing the tree, `?q` dismisses
+    // it and then closes the tree.
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new().with_config(config).build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            (
+                Some("?<esc>"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.file_tree_window.open);
+                }),
+            ),
+            (
+                Some("<S-/><esc>"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.file_tree_window.open);
+                }),
+            ),
+            (
+                // Shift+? reported as the shifted character with the SHIFT
+                // modifier (disambiguate-only terminals).
+                Some("<S-?><esc>"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.file_tree_window.open);
+                }),
+            ),
+            (
+                Some("?q"),
+                Some(&|app: &Application| {
+                    assert!(!app.editor.file_tree_window.open);
+                }),
+            ),
         ],
         false,
     )

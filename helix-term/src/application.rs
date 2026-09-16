@@ -100,7 +100,7 @@ impl Application {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
-        use helix_view::editor::{Action, FileExplorerMode};
+        use helix_view::editor::Action;
 
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
@@ -142,7 +142,7 @@ impl Application {
         let jobs = Jobs::new();
 
         // Set below when the first file argument is a directory and the
-        // file explorer is in tree mode; the tree window is opened after
+        // file tree is enabled; the tree window is opened after
         // the scratch buffer exists (see below).
         let mut opened_directory: Option<PathBuf> = None;
 
@@ -155,13 +155,13 @@ impl Application {
             let mut files_it = args.files.into_iter().peekable();
 
             // If the first file is a directory, remember it. With
-            // `[editor.file-explorer] mode = "tree"` (e.g. `ffx .`) it is
+            // `[editor.file-tree] enable = true` (e.g. `ffx .`) it is
             // shown in the persistent file tree window docked to the left;
             // the window is opened below, after the scratch buffer exists so
             // the tree has a current document to reveal. Otherwise a modal
             // file picker is opened right away, as before.
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                if editor.config().file_explorer.mode == FileExplorerMode::Tree {
+                if editor.config().file_tree.enable {
                     opened_directory = Some(first);
                 } else {
                     let picker = ui::file_picker(&editor, first);

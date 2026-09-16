@@ -223,28 +223,6 @@ impl Default for FilePickerConfig {
     }
 }
 
-/// How the file explorer commands (`file_explorer`, ...) present files: as a
-/// modal picker listing one directory at a time, or as the persistent file
-/// tree window. Defaults to the picker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FileExplorerMode {
-    /// A modal picker overlay listing the contents of one directory; pressing
-    /// enter on a directory descends into it.
-    #[serde(rename = "picker")]
-    Picker,
-    /// The persistent file tree window docked to the left of the editor,
-    /// which expands directories in place. The window then uses the
-    /// `[editor.file-tree]` settings (ignore behaviour, width, icons).
-    #[serde(rename = "tree")]
-    Tree,
-}
-
-impl Default for FileExplorerMode {
-    fn default() -> Self {
-        Self::Picker
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FileExplorerConfig {
@@ -271,11 +249,6 @@ pub struct FileExplorerConfig {
     pub git_exclude: bool,
     /// Whether to flatten single-child directories in file explorer. Defaults to true.
     pub flatten_dirs: bool,
-    /// How the file explorer presents files: `"picker"` (the default) opens
-    /// the modal picker that lists one directory at a time, `"tree"` opens
-    /// the persistent file tree window instead (which then uses the
-    /// `[editor.file-tree]` settings). Defaults to `"picker"`.
-    pub mode: FileExplorerMode,
 }
 
 impl Default for FileExplorerConfig {
@@ -289,7 +262,6 @@ impl Default for FileExplorerConfig {
             git_global: false,
             git_exclude: false,
             flatten_dirs: true,
-            mode: FileExplorerMode::Picker,
         }
     }
 }
@@ -431,6 +403,11 @@ pub struct FileTreeState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FileTreeConfig {
+    /// Whether the file explorer commands (`file_explorer`, ...) open the
+    /// persistent file tree window instead of the modal picker, and a
+    /// directory passed on the command line is shown in the tree. Defaults to
+    /// false (the modal picker).
+    pub enable: bool,
     /// Enables hiding hidden files in the file tree. Defaults to true.
     pub hidden: bool,
     /// Enables following symlinks in the file tree. Defaults to false.
@@ -470,6 +447,7 @@ pub struct FileTreeConfig {
 impl Default for FileTreeConfig {
     fn default() -> Self {
         Self {
+            enable: false,
             hidden: true,
             follow_symlinks: false,
             parents: true,
@@ -2964,19 +2942,19 @@ mod tests {
     }
 
     #[test]
-    fn file_explorer_mode_field_deserializes() {
+    fn file_tree_enable_field_deserializes() {
         #[derive(Deserialize)]
         #[serde(rename_all = "kebab-case")]
         struct Section {
-            file_explorer: FileExplorerConfig,
+            file_tree: FileTreeConfig,
         }
-        let section: Section = toml::from_str("[file-explorer]\nmode = \"tree\"").unwrap();
-        assert_eq!(section.file_explorer.mode, FileExplorerMode::Tree);
-        let section: Section = toml::from_str("[file-explorer]\nmode = \"picker\"").unwrap();
-        assert_eq!(section.file_explorer.mode, FileExplorerMode::Picker);
-        // Defaults to the picker for backward compatibility.
-        let config: FileExplorerConfig = FileExplorerConfig::default();
-        assert_eq!(config.mode, FileExplorerMode::Picker);
+        let section: Section = toml::from_str("[file-tree]\nenable = true").unwrap();
+        assert!(section.file_tree.enable);
+        let section: Section = toml::from_str("[file-tree]\nenable = false").unwrap();
+        assert!(!section.file_tree.enable);
+        // The picker remains the default (the tree is opt-in).
+        let config: FileTreeConfig = FileTreeConfig::default();
+        assert!(!config.enable);
     }
 
     #[test]
