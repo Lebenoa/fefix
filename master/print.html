@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-91b8cf69.js";
+            window.path_to_searchindex_js = "searchindex-ae2f56cb.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e3ed18d8.js"></script>
@@ -760,9 +760,9 @@ selection to the “func” <code>identifier</code>.</p>
 <p>If a picker shows multiple columns, you may apply the filter to a specific column by prefixing the column name with <code>%</code>. Column names can be shortened to any prefix, so <code>%p</code>, <code>%pa</code> or <code>%pat</code> all mean the same as <code>%path</code>. For example, a query of <code>fefix %p .toml !lang</code> in the global search picker searches for the term “fefix” within files with paths ending in “.toml” but not including “lang”.</p>
 <p>You can insert the contents of a <a href="#registers-1">register</a> using <code>Ctrl-r</code> followed by a register name. For example, one could insert the currently selected text using <code>Ctrl-r</code>-<code>.</code>, or the directory of the current file using <code>Ctrl-r</code>-<code>%</code> followed by <code>Ctrl-w</code> to remove the last path section. The global search picker will use the contents of the <a href="#default-registers">search register</a> if you press <code>Enter</code> without typing a filter. For example, pressing <code>*</code>-<code>Space-/</code>-<code>Enter</code> will start a global search for the currently selected text.</p>
 <h3 id="file-explorer"><a class="header" href="#file-explorer">File explorer</a></h3>
-<p><code>Space-e</code> opens an interactive file explorer for browsing and opening files, rooted at the workspace; <code>Space-.</code> opens one rooted at the current buffer’s directory. Unlike the file picker, the explorer does not ignore most files by default; its ignore behaviour is configured separately in the <a href="#editorfile-explorer-section"><code>[editor.file-explorer]</code></a> section. Set <code>mode = "tree"</code> there to make the explorer commands open the persistent file tree window (see below) instead of the modal picker.</p>
+<p><code>Space-e</code> opens an interactive file explorer for browsing and opening files, rooted at the workspace; <code>Space-.</code> opens one rooted at the current buffer’s directory. Unlike the file picker, the explorer does not ignore most files by default; its ignore behaviour is configured separately in the <a href="#editorfile-explorer-section"><code>[editor.file-explorer]</code></a> section. Set <code>[editor.file-tree] enable = true</code> to make the explorer commands open the persistent file tree window (see below) instead of the modal picker.</p>
 <h3 id="file-tree"><a class="header" href="#file-tree">File tree</a></h3>
-<p>With <code>[editor.file-explorer] mode = "tree"</code>, <code>Space-e</code> toggles a VS Code / Zed style file tree window docked to the left of the editor rooted at the workspace (open it, or close it again), and <code>Space-.</code> opens (or re-roots) one at the current buffer’s directory. The <code>file_tree</code> command line and other <code>file_tree*</code> commands toggle or open the window when bound. Unlike the file explorer, the whole directory hierarchy is shown at once and directories expand and collapse in place. The tree is a persistent window, not a modal overlay: <code>Enter</code> on a file opens it and moves focus to the editor while the window stays open, <code>Esc</code> moves focus from the tree back to the editor, and clicking in either pane focuses it (<code>q</code> closes the tree while it is focused, or use the <code>close_file_tree</code> command). <code>Right</code>/<code>l</code> expands a directory (or enters its first child if already expanded), <code>Left</code>/<code>h</code> collapses it or moves to its parent, <code>Enter</code> on a directory toggles it, and <code>r</code> refreshes the selected directory. <code>/</code> starts a filter: a search bar appears at the top of the tree and the visible entries narrow to paths containing the typed query (case-insensitive, matched across the whole tree rather than just expanded directories); <code>Esc</code> clears the filter and restores the tree. Opening the tree reveals the current buffer if it is under the root. Directories and files get VS Code / Zed style icons when the terminal is detected as Nerd Font capable (folders show an open/closed glyph, or a special glyph for well-known folder names like <code>src</code>/<code>assets</code>, and files a type-specific glyph); see the <code>icons</code> and <code>folder-icons</code> options in the <a href="#editorfile-tree-section"><code>[editor.file-tree]</code></a> section. The window’s content width starts at the <code>width</code> option (default 30 columns) and can be resized live by dragging the separator between the tree and the editor with the mouse. Expanded/collapsed directories are remembered across tree sessions, and ignore behaviour is configured there too.</p>
+<p>With <code>[editor.file-tree] enable = true</code>, <code>Space-e</code> toggles a VS Code / Zed style file tree window docked to the left of the editor rooted at the workspace (open it, or close it again), and <code>Space-.</code> opens (or re-roots) one at the current buffer’s directory. The <code>file_tree</code> command line and other <code>file_tree*</code> commands toggle or open the window when bound. Unlike the file explorer, the whole directory hierarchy is shown at once and directories expand and collapse in place. The tree is a persistent window, not a modal overlay: <code>Enter</code> on a file opens it and moves focus to the editor while the window stays open, <code>Esc</code> moves focus from the tree back to the editor, and clicking in either pane focuses it (<code>q</code> closes the tree while it is focused, or use the <code>close_file_tree</code> command). <code>Right</code>/<code>l</code> expands a directory (or enters its first child if already expanded), <code>Left</code>/<code>h</code> collapses it or moves to its parent, <code>Enter</code> on a directory toggles it, and <code>r</code> refreshes the selected directory. <code>?</code> (Shift+<code>/</code>) shows a which-key style popup listing every binding while the tree is focused; any key pressed then closes it and runs that binding. <code>/</code> starts a filter: a search bar appears at the top of the tree and the visible entries narrow to paths containing the typed query (case-insensitive, matched across the whole tree rather than just expanded directories); <code>Esc</code> clears the filter and restores the tree. Opening the tree reveals the current buffer if it is under the root. Directories and files get VS Code / Zed style icons when the terminal is detected as Nerd Font capable (folders show an open/closed glyph, or a special glyph for well-known folder names like <code>src</code>/<code>assets</code>, and files a type-specific glyph); see the <code>icons</code> and <code>folder-icons</code> options in the <a href="#editorfile-tree-section"><code>[editor.file-tree]</code></a> section. The window’s content width starts at the <code>width</code> option (default 30 columns) and can be resized live by dragging the separator between the tree and the editor with the mouse. Expanded/collapsed directories are remembered across tree sessions, and ignore behaviour is configured there too.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="jumplist"><a href="#jumplist" class="header">Jumplist</a></h1>
 <h2 id="using-the-jumplist"><a class="header" href="#using-the-jumplist">Using the jumplist</a></h2>
@@ -2720,38 +2720,35 @@ auto-reload = false # disable automatic reload on external file change
 </code></pre>
 <p>This is an fefix-only key (commit <code>d212cd03</code>). Upstream Helix has no
 equivalent; it requires a manual reload.</p>
-<h3 id="editorfile-explorer-mode-and-editorfile-tree"><a class="header" href="#editorfile-explorer-mode-and-editorfile-tree"><code>[editor.file-explorer] mode</code> and <code>[editor.file-tree]</code></a></h3>
-<p>The file tree is a <strong>style of the file explorer</strong>, not a separate feature.
-Upstream Helix ships only the modal explorer; fefix adds a <code>mode</code> field to
-<code>[editor.file-explorer]</code> plus an <code>[editor.file-tree]</code> section that the tree
-style consumes.</p>
-<pre><code class="language-toml">[editor.file-explorer]
-mode = "picker"   # "picker" (default) | "tree"
-</code></pre>
-<ul>
-<li><code>mode = "picker"</code> — the modal picker overlay listing one directory at a
-time; pressing enter on a directory descends into it. This matches upstream
-Helix behavior.</li>
-<li><code>mode = "tree"</code> — the persistent file-tree window docked to the left of the
-editor, expanding directories in place. It reads the <code>[editor.file-tree]</code>
-settings below (ignore behaviour, width, icons) and can be resized by
-dragging the separator with the mouse.</li>
-</ul>
-<p><code>[editor.file-tree]</code> — configuration for the tree style. Defaults shown:</p>
+<h3 id="editorfile-tree"><a class="header" href="#editorfile-tree"><code>[editor.file-tree]</code></a></h3>
+<p>The file tree is an fefix extension of the file explorer. Upstream Helix
+ships only the modal explorer; fefix adds an <code>[editor.file-tree]</code> section
+that turns the file explorer commands (<code>&lt;space&gt;e</code>, <code>&lt;space&gt;.</code>) into the
+persistent file-tree window and shows a directory passed on the command line
+there instead of a modal picker.</p>
 <pre><code class="language-toml">[editor.file-tree]
-hidden = true           # hide hidden files (dotfiles)
-follow-symlinks = false # follow directory symlinks
-parents = true          # read upsearch .ignore / .gitignore from parent dirs
-ignore = true           # read .ignore files
-git-ignore = true       # read .gitignore files
-git-global = true       # read the global gitignore (core.excludesFile)
-git-exclude = true      # read .git/info/exclude
-width = 30              # preferred content width in columns
-icons = "auto"          # "auto" | "nerdfont" | "ascii"
+enable = false           # false (default) | true
+hidden = true            # hide hidden files (dotfiles)
+follow-symlinks = false  # follow directory symlinks
+parents = true           # read upsearch .ignore / .gitignore from parent dirs
+ignore = true            # read .ignore files
+git-ignore = true        # read .gitignore files
+git-global = true        # read the global gitignore (core.excludesFile)
+git-exclude = true       # read .git/info/exclude
+width = 30               # preferred content width in columns
+icons = "auto"           # "auto" | "nerdfont" | "ascii"
 # Override Nerd Font glyphs for well-known folder names (e.g. "src"):
 folder-icons = {}
 </code></pre>
 <ul>
+<li><code>enable</code> — When <code>true</code>, the file explorer commands (<code>&lt;space&gt;e</code>, …) open
+the persistent file-tree window docked to the left of the editor instead of
+the modal picker, and opening a directory as the first argument (<code>ffx .</code>)
+shows it in the tree. The window expands directories in place, reads the
+<code>[editor.file-tree]</code> settings below (ignore behaviour, width, icons) and can
+be resized by dragging the separator with the mouse. Defaults to <code>false</code>
+(the modal picker); the standalone <code>file_tree</code> command (<code>&lt;space&gt;t</code>,
+<code>&lt;space&gt;T</code>) is always available regardless of this setting.</li>
 <li><code>width</code> — Preferred width of the file-tree content in columns (the separator
 column excluded). Can be adjusted per session by dragging the separator with
 the mouse. <code>0</code> falls back to this value for the session width. Defaults to
@@ -3028,14 +3025,13 @@ not visible in the fefix file picker and global search.</p>
 <tr><td><code>git-global</code></td><td>Enables reading global <code>.gitignore</code>, whose path is specified in git’s config: <code>core.excludesfile</code> option</td><td><code>false</code></td></tr>
 <tr><td><code>git-exclude</code></td><td>Enables reading <code>.git/info/exclude</code> files</td><td><code>false</code></td></tr>
 <tr><td><code>flatten-dirs</code></td><td>Enables flattening single child directories</td><td><code>true</code></td></tr>
-<tr><td><code>mode</code></td><td>How the file explorer commands present files: <code>"picker"</code> (the default) opens the modal picker that lists one directory at a time, <code>"tree"</code> opens the persistent file tree window instead. In <code>"tree"</code> mode the window uses the <code>[editor.file-tree]</code> settings (ignore behaviour, width, icons) and <code>flatten-dirs</code> is ignored</td><td><code>"picker"</code></td></tr>
 </tbody>
 </table>
 </div>
 <p>Example</p>
-<pre><code class="language-toml">[editor.file-explorer]
+<pre><code class="language-toml">[editor.file-tree]
 # Open the file tree window from the file explorer keys (`&lt;space&gt;e`, `&lt;space&gt;.`).
-mode = "tree"
+enable = true
 </code></pre>
 <h3 id="editorfile-tree-section"><a class="header" href="#editorfile-tree-section"><code>[editor.file-tree]</code> Section</a></h3>
 <p>Configure the file tree sidebar (see the <code>file_tree</code> command). Like the file explorer, it uses the <code>ignore</code> crate, but unlike the file explorer its defaults hide hidden files and honor ignore files, similar to the file picker, so that the tree stays focused on project files.</p>
@@ -3045,6 +3041,7 @@ mode = "tree"
 <tr><th>Key</th><th>Description</th><th>Default</th></tr>
 </thead>
 <tbody>
+<tr><td><code>enable</code></td><td>Opens the persistent file tree window from the file explorer commands (<code>&lt;space&gt;e</code>, <code>&lt;space&gt;.</code>) instead of the modal picker, and shows a directory passed on the command line (<code>ffx .</code>) in the tree</td><td><code>false</code></td></tr>
 <tr><td><code>hidden</code></td><td>Enables ignoring hidden files</td><td><code>true</code></td></tr>
 <tr><td><code>follow-symlinks</code></td><td>Follow symlinks instead of ignoring them</td><td><code>false</code></td></tr>
 <tr><td><code>parents</code></td><td>Enables reading ignore files from parent directories</td><td><code>true</code></td></tr>
