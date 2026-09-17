@@ -1,8 +1,8 @@
 use crate::{
+    Error, ProgressMap, ProgressState, Result,
     registry::DebugAdapterId,
     requests::{DisconnectArguments, TerminateArguments},
     transport::{Payload, Request, Response, Transport},
-    Error, ProgressMap, ProgressState, Result,
 };
 use helix_core::syntax::config::{DebugAdapterConfig, DebuggerQuirks};
 use helix_dap_types::*;
@@ -22,7 +22,7 @@ use tokio::{
     io::{AsyncBufRead, AsyncWrite, BufReader, BufWriter},
     net::TcpStream,
     process::{Child, Command},
-    sync::mpsc::{channel, unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{UnboundedReceiver, UnboundedSender, channel, unbounded_channel},
     time,
 };
 
@@ -254,7 +254,7 @@ impl Client {
     pub fn call<R: helix_dap_types::Request>(
         &self,
         arguments: R::Arguments,
-    ) -> impl Future<Output = Result<Value>>
+    ) -> impl Future<Output = Result<Value>> + use<R>
     where
         R::Arguments: serde::Serialize,
     {
@@ -316,7 +316,7 @@ impl Client {
         request_seq: u64,
         command: &str,
         result: core::result::Result<Value, Error>,
-    ) -> impl Future<Output = Result<()>> {
+    ) -> impl Future<Output = Result<()>> + use<> {
         let server_tx = self.server_tx.clone();
         let command = command.to_string();
 
@@ -394,7 +394,7 @@ impl Client {
     pub fn disconnect(
         &mut self,
         args: Option<DisconnectArguments>,
-    ) -> impl Future<Output = Result<Value>> {
+    ) -> impl Future<Output = Result<Value>> + use<> {
         self.connection_type = None;
         self.call::<requests::Disconnect>(args)
     }
@@ -402,24 +402,30 @@ impl Client {
     pub fn terminate(
         &mut self,
         args: Option<TerminateArguments>,
-    ) -> impl Future<Output = Result<Value>> {
+    ) -> impl Future<Output = Result<Value>> + use<> {
         self.connection_type = None;
         self.call::<requests::Terminate>(args)
     }
 
-    pub fn launch(&mut self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
+    pub fn launch(
+        &mut self,
+        args: serde_json::Value,
+    ) -> impl Future<Output = Result<Value>> + use<> {
         self.connection_type = Some(ConnectionType::Launch);
         self.starting_request_args = Some(args.clone());
         self.call::<requests::Launch>(args)
     }
 
-    pub fn attach(&mut self, args: serde_json::Value) -> impl Future<Output = Result<Value>> {
+    pub fn attach(
+        &mut self,
+        args: serde_json::Value,
+    ) -> impl Future<Output = Result<Value>> + use<> {
         self.connection_type = Some(ConnectionType::Attach);
         self.starting_request_args = Some(args.clone());
         self.call::<requests::Attach>(args)
     }
 
-    pub fn restart(&self) -> impl Future<Output = Result<Value>> {
+    pub fn restart(&self) -> impl Future<Output = Result<Value>> + use<> {
         let args = if let Some(args) = &self.starting_request_args {
             args.clone()
         } else {
@@ -469,7 +475,10 @@ impl Client {
         Ok(())
     }
 
-    pub fn continue_thread(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
+    pub fn continue_thread(
+        &self,
+        thread_id: ThreadId,
+    ) -> impl Future<Output = Result<Value>> + use<> {
         let args = requests::ContinueArguments { thread_id };
 
         self.call::<requests::Continue>(args)
@@ -490,7 +499,7 @@ impl Client {
         Ok((response.stack_frames, response.total_frames))
     }
 
-    pub fn threads(&self) -> impl Future<Output = Result<Value>> {
+    pub fn threads(&self) -> impl Future<Output = Result<Value>> + use<> {
         self.call::<requests::Threads>(Some(requests::ThreadsArguments {}))
     }
 
@@ -514,7 +523,7 @@ impl Client {
         Ok(response.variables)
     }
 
-    pub fn step_in(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
+    pub fn step_in(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> + use<> {
         let args = requests::StepInArguments {
             thread_id,
             target_id: None,
@@ -524,7 +533,7 @@ impl Client {
         self.call::<requests::StepIn>(args)
     }
 
-    pub fn step_out(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
+    pub fn step_out(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> + use<> {
         let args = requests::StepOutArguments {
             thread_id,
             granularity: None,
@@ -533,7 +542,7 @@ impl Client {
         self.call::<requests::StepOut>(args)
     }
 
-    pub fn next(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
+    pub fn next(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> + use<> {
         let args = requests::NextArguments {
             thread_id,
             granularity: None,
@@ -542,7 +551,7 @@ impl Client {
         self.call::<requests::Next>(args)
     }
 
-    pub fn pause(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
+    pub fn pause(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> + use<> {
         let args = requests::PauseArguments { thread_id };
 
         self.call::<requests::Pause>(args)
@@ -566,7 +575,7 @@ impl Client {
     pub fn set_exception_breakpoints(
         &self,
         filters: Vec<String>,
-    ) -> impl Future<Output = Result<Value>> {
+    ) -> impl Future<Output = Result<Value>> + use<> {
         let args = requests::SetExceptionBreakpointsArguments { filters };
 
         self.call::<requests::SetExceptionBreakpoints>(args)

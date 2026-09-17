@@ -1,20 +1,19 @@
 use crate::{
+    Call, Error, LanguageServerId, OffsetEncoding, Result,
     file_operations::FileOperationsInterest,
     find_lsp_workspace, jsonrpc,
     transport::{Payload, Transport},
-    Call, Error, LanguageServerId, OffsetEncoding, Result,
 };
 use log::info;
 
 use crate::lsp::{
-    self, notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
-    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
-    WorkspaceFolder, WorkspaceFoldersChangeEvent,
+    self, CodeActionCapabilityResolveSupport, DidChangeWorkspaceFoldersParams, OneOf,
+    PositionEncodingKind, SignatureHelp, Url, WorkspaceFolder, WorkspaceFoldersChangeEvent,
+    notification::DidChangeWorkspaceFolders,
 };
 use helix_core::{
-    find_workspace,
+    ChangeSet, Rope, find_workspace,
     syntax::config::{LanguageServerFeature, RootMarkers},
-    ChangeSet, Rope,
 };
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
@@ -25,8 +24,8 @@ use std::{collections::HashMap, path::PathBuf};
 use std::{
     ffi::OsStr,
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicU64, Ordering},
     },
 };
 use std::{future::Future, sync::OnceLock};
@@ -35,8 +34,8 @@ use tokio::{
     io::{BufReader, BufWriter},
     process::{Child, Command},
     sync::{
-        mpsc::{channel, UnboundedReceiver, UnboundedSender},
         Notify, OnceCell,
+        mpsc::{UnboundedReceiver, UnboundedSender, channel},
     },
 };
 
@@ -419,9 +418,11 @@ impl Client {
                 "utf-16" => Some(OffsetEncoding::Utf16),
                 "utf-32" => Some(OffsetEncoding::Utf32),
                 encoding => {
-                    log::error!("Server provided invalid position encoding {encoding}, defaulting to utf-16");
+                    log::error!(
+                        "Server provided invalid position encoding {encoding}, defaulting to utf-16"
+                    );
                     None
-                },
+                }
             })
             .unwrap_or_default()
     }
@@ -440,7 +441,7 @@ impl Client {
     fn call<R: lsp::request::Request>(
         &self,
         params: R::Params,
-    ) -> impl Future<Output = Result<R::Result>>
+    ) -> impl Future<Output = Result<R::Result>> + use<R>
     where
         R::Params: serde::Serialize,
     {
@@ -450,7 +451,7 @@ impl Client {
     fn call_with_ref<R: lsp::request::Request>(
         &self,
         params: &R::Params,
-    ) -> impl Future<Output = Result<R::Result>>
+    ) -> impl Future<Output = Result<R::Result>> + use<R>
     where
         R::Params: serde::Serialize,
     {
@@ -461,7 +462,7 @@ impl Client {
         &self,
         params: &R::Params,
         timeout_secs: u64,
-    ) -> impl Future<Output = Result<R::Result>>
+    ) -> impl Future<Output = Result<R::Result>> + use<R>
     where
         R::Params: serde::Serialize,
     {
@@ -853,7 +854,7 @@ impl Client {
         &self,
         path: &Path,
         is_dir: bool,
-    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>> + use<>> {
         let capabilities = self.file_operations_intests();
         if !capabilities.will_create.has_interest(path, is_dir) {
             return None;
@@ -886,7 +887,7 @@ impl Client {
         old_path: &Path,
         new_path: &Path,
         is_dir: bool,
-    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>> + use<>> {
         let capabilities = self.file_operations_intests();
         if !capabilities.will_rename.has_interest(old_path, is_dir) {
             return None;
@@ -919,7 +920,7 @@ impl Client {
         &self,
         path: &Path,
         is_dir: bool,
-    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>> + use<>> {
         let capabilities = self.file_operations_intests();
         if !capabilities.will_delete.has_interest(path, is_dir) {
             return None;
@@ -1166,7 +1167,7 @@ impl Client {
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
         context: lsp::CompletionContext,
-    ) -> Option<impl Future<Output = Result<Option<lsp::CompletionResponse>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::CompletionResponse>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support completion.
@@ -1191,14 +1192,14 @@ impl Client {
     pub fn resolve_completion_item(
         &self,
         completion_item: &lsp::CompletionItem,
-    ) -> impl Future<Output = Result<lsp::CompletionItem>> {
+    ) -> impl Future<Output = Result<lsp::CompletionItem>> + use<> {
         self.call_with_ref::<lsp::request::ResolveCompletionItem>(completion_item)
     }
 
     pub fn resolve_code_action(
         &self,
         code_action: &lsp::CodeAction,
-    ) -> Option<impl Future<Output = Result<lsp::CodeAction>>> {
+    ) -> Option<impl Future<Output = Result<lsp::CodeAction>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support resolving code actions.
@@ -1218,7 +1219,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<SignatureHelp>>>> {
+    ) -> Option<impl Future<Output = Result<Option<SignatureHelp>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support signature help.
@@ -1242,7 +1243,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::InlayHint>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::InlayHint>>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         match capabilities.inlay_hint_provider {
@@ -1266,7 +1267,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Vec<lsp::ColorInformation>>>> {
+    ) -> Option<impl Future<Output = Result<Vec<lsp::ColorInformation>>> + use<>> {
         self.capabilities.get().unwrap().color_provider.as_ref()?;
         let params = lsp::DocumentColorParams {
             text_document,
@@ -1285,7 +1286,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::DocumentLink>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::DocumentLink>>>> + use<>> {
         if !self.supports_feature(LanguageServerFeature::DocumentLinks) {
             return None;
         }
@@ -1302,7 +1303,7 @@ impl Client {
     pub fn resolve_document_link(
         &self,
         params: lsp::DocumentLink,
-    ) -> Option<impl Future<Output = Result<lsp::DocumentLink>>> {
+    ) -> Option<impl Future<Output = Result<lsp::DocumentLink>> + use<>> {
         if !self.supports_feature(LanguageServerFeature::DocumentLinks) {
             return None;
         }
@@ -1315,7 +1316,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<lsp::Hover>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::Hover>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support hover.
@@ -1346,7 +1347,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::TextEdit>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::TextEdit>>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support formatting.
@@ -1372,7 +1373,7 @@ impl Client {
         range: lsp::Range,
         options: lsp::FormattingOptions,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::TextEdit>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::TextEdit>>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support range formatting.
@@ -1397,7 +1398,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         previous_result_id: Option<String>,
-    ) -> Option<impl Future<Output = Result<lsp::DocumentDiagnosticReportResult>>> {
+    ) -> Option<impl Future<Output = Result<lsp::DocumentDiagnosticReportResult>> + use<>> {
         let capabilities = self.capabilities();
 
         // Return early if the server does not support pull diagnostic.
@@ -1424,7 +1425,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::DocumentHighlight>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::DocumentHighlight>>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support document highlight.
@@ -1449,15 +1450,15 @@ impl Client {
 
     fn goto_request<
         T: lsp::request::Request<
-            Params = lsp::GotoDefinitionParams,
-            Result = Option<lsp::GotoDefinitionResponse>,
-        >,
+                Params = lsp::GotoDefinitionParams,
+                Result = Option<lsp::GotoDefinitionResponse>,
+            >,
     >(
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> impl Future<Output = Result<T::Result>> {
+    ) -> impl Future<Output = Result<T::Result>> + use<T> {
         let params = lsp::GotoDefinitionParams {
             text_document_position_params: lsp::TextDocumentPositionParams {
                 text_document,
@@ -1477,7 +1478,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-definition.
@@ -1498,7 +1499,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-declaration.
@@ -1523,7 +1524,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-type-definition.
@@ -1547,7 +1548,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::GotoDefinitionResponse>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-definition.
@@ -1572,7 +1573,7 @@ impl Client {
         position: lsp::Position,
         include_declaration: bool,
         work_done_token: Option<lsp::ProgressToken>,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::Location>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::Location>>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support goto-reference.
@@ -1601,7 +1602,7 @@ impl Client {
     pub fn document_symbols(
         &self,
         text_document: lsp::TextDocumentIdentifier,
-    ) -> Option<impl Future<Output = Result<Option<lsp::DocumentSymbolResponse>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::DocumentSymbolResponse>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support document symbols.
@@ -1623,7 +1624,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyItem>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyItem>>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         match capabilities.call_hierarchy_provider {
@@ -1648,7 +1649,8 @@ impl Client {
     pub fn call_hierarchy_incoming(
         &self,
         item: lsp::CallHierarchyItem,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyIncomingCall>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyIncomingCall>>>> + use<>>
+    {
         let capabilities = self.capabilities.get().unwrap();
 
         match capabilities.call_hierarchy_provider {
@@ -1671,7 +1673,8 @@ impl Client {
     pub fn call_hierarchy_outgoing(
         &self,
         item: lsp::CallHierarchyItem,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyOutgoingCall>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyOutgoingCall>>>> + use<>>
+    {
         let capabilities = self.capabilities.get().unwrap();
 
         match capabilities.call_hierarchy_provider {
@@ -1695,7 +1698,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-    ) -> Option<impl Future<Output = Result<Option<lsp::PrepareRenameResponse>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::PrepareRenameResponse>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         match capabilities.rename_provider {
@@ -1718,7 +1721,7 @@ impl Client {
     pub fn workspace_symbols(
         &self,
         query: String,
-    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceSymbolResponse>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceSymbolResponse>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support workspace symbols.
@@ -1741,7 +1744,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         range: lsp::Range,
         context: lsp::CodeActionContext,
-    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CodeActionOrCommand>>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CodeActionOrCommand>>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support code actions.
@@ -1769,7 +1772,7 @@ impl Client {
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
         new_name: String,
-    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>>> {
+    ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>> + use<>> {
         if !self.supports_feature(LanguageServerFeature::RenameSymbol) {
             return None;
         }
@@ -1791,7 +1794,7 @@ impl Client {
     pub fn command(
         &self,
         command: lsp::Command,
-    ) -> Option<impl Future<Output = Result<Option<Value>>>> {
+    ) -> Option<impl Future<Output = Result<Option<Value>>> + use<>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the language server does not support executing commands.

@@ -1,36 +1,35 @@
-use futures_util::{stream::FuturesUnordered, FutureExt};
+use futures_util::{FutureExt, future::BoxFuture, stream::FuturesUnordered};
 use helix_lsp::{
-    block_on,
+    Client, LanguageServerId, OffsetEncoding, block_on,
     lsp::{
         self, CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionTriggerKind,
         DiagnosticSeverity, NumberOrString,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
-    Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
 use tui::{text::Span, widgets::Row};
 
-use super::{align_view, push_jump, Align, Context, Editor};
+use super::{Align, Context, Editor, align_view, push_jump};
 
 use helix_core::{
-    diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    Selection, Uri, diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
+    text_annotations::InlineAnnotation,
 };
 use helix_stdx::path;
 use helix_view::{
+    Document, DocumentId, View,
     action::Action as CodeActionItem,
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
     handlers::lsp::SignatureHelpInvoked,
     theme::Style,
-    Document, DocumentId, View,
 };
 
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Job},
-    ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
+    ui::{self, FileLocation, Picker, Popup, PromptEvent, overlay::overlaid},
 };
 
 use std::{
@@ -677,7 +676,7 @@ pub(crate) fn code_actions_for_range(
     only: Option<Vec<CodeActionKind>>,
     trigger_kind: CodeActionTriggerKind,
 ) -> Vec<(
-    impl Future<Output = Result<Option<Vec<CodeActionOrCommand>>, helix_lsp::Error>>,
+    BoxFuture<'static, Result<Option<Vec<CodeActionOrCommand>>, helix_lsp::Error>>,
     LanguageServerId,
 )> {
     let mut seen_language_servers = HashSet::new();
@@ -704,7 +703,7 @@ pub(crate) fn code_actions_for_range(
             };
             let code_action_request =
                 language_server.code_actions(doc.identifier(), lsp_range, code_action_context)?;
-            Some((code_action_request, language_server_id))
+            Some((code_action_request.boxed(), language_server_id))
         })
         .collect::<Vec<_>>()
 }
@@ -1156,7 +1155,7 @@ pub fn rename_symbol(cx: &mut Context) {
         if primary_selection.len() > 1 {
             primary_selection
         } else {
-            use helix_core::textobject::{textobject_word, TextObject};
+            use helix_core::textobject::{TextObject, textobject_word};
             textobject_word(text, primary_selection, TextObject::Inside, 1, false)
         }
         .fragment(text)
@@ -1348,7 +1347,7 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
-) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
+) -> Option<BoxFuture<'static, Result<crate::job::Callback, anyhow::Error>>> {
     let view_id = view.id;
     let doc_id = view.doc;
 
