@@ -32,6 +32,10 @@ Breaking changes:
 
 Features:
 
+* The file tree can rename the selected file or directory: `r` opens an
+  inline bar prefilled with the name (`Enter` confirms, `Esc` cancels);
+  directory contents and tree paths are rewritten in place. Refresh moves to
+  `R`.
 * The file tree can delete the selected entry: `d` (or `Delete`) removes the
   file or directory (recursively) and moves the selection to its replacement.
   A second press confirms the deletion; any other key cancels it.

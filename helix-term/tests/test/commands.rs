@@ -1240,6 +1240,74 @@ async fn tree_deletes_selected_directory_recursively() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn tree_renames_selected_file() -> anyhow::Result<()> {
+    // `r` opens an inline rename bar prefilled with the name; typing a new
+    // name and pressing `Enter` renames the entry on disk.
+    let dir = tempdir()?;
+    std::fs::write(dir.path().join("a.txt"), "content")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            (Some("j"), None),
+            // Clear the prefilled "a.txt", type the new name, confirm.
+            (
+                Some("r<backspace><backspace><backspace><backspace><backspace>b.txt<ret>"),
+                Some(&|_: &Application| {
+                    assert!(!dir.path().join("a.txt").exists());
+                    let renamed = dir.path().join("b.txt");
+                    assert!(renamed.exists());
+                    assert_eq!(std::fs::read_to_string(renamed).unwrap(), "content");
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tree_renames_selected_directory() -> anyhow::Result<()> {
+    // Renaming a directory keeps its contents and rewrites the tree paths.
+    let dir = tempdir()?;
+    std::fs::create_dir(dir.path().join("sub"))?;
+    std::fs::write(dir.path().join("sub/inner.txt"), "i")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            (Some("j"), None),
+            (
+                Some("r<backspace><backspace><backspace>newsub<ret>"),
+                Some(&|_: &Application| {
+                    assert!(!dir.path().join("sub").exists());
+                    let renamed = dir.path().join("newsub");
+                    assert!(renamed.is_dir());
+                    assert_eq!(
+                        std::fs::read_to_string(renamed.join("inner.txt")).unwrap(),
+                        "i"
+                    );
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
     test((
         indoc! {r"

@@ -433,6 +433,21 @@ impl Tree {
         }
         remove_rec(&mut self.entries, path)
     }
+
+    /// Rewrite the path of the entry at `old` and of every loaded descendant
+    /// to start with `new` instead, after the filesystem rename happened.
+    fn rename_paths(&mut self, old: &Path, new: &Path) {
+        fn rec(entries: &mut [TreeEntry], old: &Path, new: &Path) {
+            for entry in entries.iter_mut() {
+                if entry.path.starts_with(old) {
+                    let rel = entry.path.strip_prefix(old).unwrap_or(Path::new(""));
+                    entry.path = new.join(rel);
+                }
+                rec(&mut entry.children, old, new);
+            }
+        }
+        rec(&mut self.entries, old, new);
+    }
 }
 
 fn flatten<'a>(entries: &'a [TreeEntry], depth: usize, out: &mut Vec<(&'a TreeEntry, usize)>) {
@@ -520,6 +535,11 @@ pub struct FileTree {
     /// deletion, or `None` when no deletion is armed. Any other key (or
     /// moving the selection) cancels the arming.
     pending_delete: Option<PathBuf>,
+    /// Whether a rename is being edited: while `true` a bar at the top shows
+    /// the new name, and `Enter` renames the selected entry.
+    renaming: bool,
+    /// The new name being typed (see [`FileTree::renaming`]).
+    rename_input: String,
     /// The (column, content width) pair captured when a separator drag
     /// started, or `None` when not resizing.
     resizing: Option<(u16, u16)>,
@@ -550,6 +570,8 @@ impl FileTree {
             show_keymap: false,
             filter: String::new(),
             pending_delete: None,
+            renaming: false,
+            rename_input: String::new(),
             resizing: None,
             max_width: 0,
         }
@@ -634,6 +656,74 @@ impl FileTree {
         EventResult::Consumed(None)
     }
 
+    /// Enter rename mode (`r`) for the selected entry: a bar at the top shows
+    /// the entry's name and `Enter` renames it on disk.
+    fn start_rename(&mut self) {
+        let name = self
+            .tree
+            .selected_path()
+            .and_then(|path| {
+                path.file_name()
+                    .map(|name| name.to_string_lossy().into_owned())
+            })
+            .unwrap_or_default();
+        self.rename_input = name;
+        self.renaming = true;
+    }
+
+    /// Apply the rename typed in the rename bar (`r` then `Enter`). On
+    /// success the tree paths are rewritten, the new path is selected and
+    /// rename mode ends; on failure an error is shown and the edit stays open.
+    fn commit_rename(&mut self, ctx: &mut Context) {
+        let Some(old_name) = self.tree.selected_path() else {
+            self.renaming = false;
+            return;
+        };
+        if self.rename_input.is_empty() || self.rename_input.trim().is_empty() {
+            ctx.editor.set_error("Name cannot be empty");
+            return;
+        }
+        let new = old_name
+            .parent()
+            .map(|parent| parent.join(self.rename_input.trim()));
+        let Some(new) = new else {
+            self.renaming = false;
+            return;
+        };
+        if new == old_name {
+            self.renaming = false;
+            return;
+        }
+        if new.exists() {
+            ctx.editor.set_error(format!(
+                "{} already exists",
+                new.file_name()
+                    .map(|n| n.to_string_lossy())
+                    .unwrap_or_default()
+            ));
+            return;
+        }
+        if let Err(err) = std::fs::rename(&old_name, &new) {
+            ctx.editor
+                .set_error(format!("Failed to rename {}: {err}", old_name.display()));
+            return;
+        }
+        forget_expanded(&self.tree.root, &old_name);
+        self.tree.rename_paths(&old_name, &new);
+        self.tree.select(&new);
+        self.renaming = false;
+        ctx.editor.set_status(format!(
+            "Renamed {} -> {}",
+            old_name
+                .file_name()
+                .map(|n| n.to_string_lossy())
+                .unwrap_or_default(),
+            new.file_name()
+                .map(|n| n.to_string_lossy())
+                .unwrap_or_default()
+        ));
+    }
+
     /// Permanently delete the selected file or directory (`d`, `Delete`).
     /// The selection moves to the entry that took its place, or to the
     /// parent directory when nothing remains.
@@ -689,6 +779,7 @@ impl FileTree {
             self.show_keymap = false;
         }
         self.pending_delete = None;
+        self.renaming = false;
         let area = self.area;
         // The separator column doubles as the resize handle. Only events over
         // the tree's own columns belong to the tree; anything else falls
@@ -999,6 +1090,35 @@ impl Component for FileTree {
             }
         }
 
+        // While a rename is being edited, printable characters extend the
+        // name in the bar at the top; `Enter` renames the selected entry and
+        // `Esc` cancels. Every other key is consumed so the selection cannot
+        // drift away from the entry being renamed.
+        if self.renaming {
+            match key_event {
+                key!(Esc) | ctrl!('c') => {
+                    self.renaming = false;
+                    return EventResult::Consumed(None);
+                }
+                key!(Enter) => {
+                    self.commit_rename(ctx);
+                    return EventResult::Consumed(None);
+                }
+                key!(Backspace) | shift!(Backspace) => {
+                    self.rename_input.pop();
+                    return EventResult::Consumed(None);
+                }
+                KeyEvent {
+                    code: KeyCode::Char(c),
+                    modifiers,
+                } if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) => {
+                    self.rename_input.push(c);
+                    return EventResult::Consumed(None);
+                }
+                _ => return EventResult::Consumed(None),
+            }
+        }
+
         match key_event {
             ctrl!('w') => {
                 // Start the window prefix (see above).
@@ -1081,6 +1201,9 @@ impl Component for FileTree {
                 return EventResult::Consumed(Some(callback));
             }
             key!('r') => {
+                self.start_rename();
+            }
+            key!('R') | shift!('r') => {
                 self.tree.refresh(&self.tree.selected.clone());
             }
             key!('d') | key!(Delete) => {
@@ -1143,18 +1266,18 @@ impl Component for FileTree {
             }
         }
 
-        // The search bar occupies the first row while filtering; the rows
-        // below it (minus the editor's statusline / commandline rows) hold
-        // tree entries.
-        let bar_rows = u16::from(self.filtering);
+        // The search / rename bar occupies the first row while one is active;
+        // the rows below it (minus the editor's statusline / commandline rows)
+        // hold tree entries.
+        let bar_rows = u16::from(self.filtering || self.renaming);
         let height = tree_area.height.saturating_sub(2 + bar_rows) as usize;
         if height == 0 {
             return;
         }
 
-        // While filtering, highlight the first row as a search bar showing the
-        // current query.
-        if self.filtering {
+        // While filtering or renaming, highlight the first row as the input
+        // bar showing the current query / new name.
+        if self.filtering || self.renaming {
             let bar_style = theme.get("ui.text").patch(selected_style);
             surface.clear_with(
                 Rect {
@@ -1165,7 +1288,11 @@ impl Component for FileTree {
                 },
                 bar_style,
             );
-            let bar = format!("/{}", self.filter);
+            let bar = if self.filtering {
+                format!("/{}", self.filter)
+            } else {
+                format!("rename: {}", self.rename_input)
+            };
             surface.set_stringn(
                 tree_area.x,
                 tree_area.y,
@@ -1241,7 +1368,8 @@ fn keymap_info() -> Info {
         ("h/←, l/→", "collapse/expand, or open"),
         ("Enter", "open file or toggle directory"),
         ("/", "filter the tree"),
-        ("r", "refresh selected directory"),
+        ("r", "rename file/dir"),
+        ("R", "refresh selected directory"),
         ("d / Del", "delete file/dir (again to confirm)"),
         ("q", "close the tree"),
         ("Esc", "hand focus back to the editor"),
