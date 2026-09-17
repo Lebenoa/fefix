@@ -32,6 +32,10 @@ Breaking changes:
 
 Features:
 
+* The file tree is part of the window navigation: `C-w w` / `Space-w w`
+  rotates it into the window cycle, `C-w h` / `Space-w h` jumps to it as the
+  leftmost window, and `C-w l` (or `C-w w`) from the tree returns to the
+  editor.
 * `?` while the file tree window is focused opens a which-key style popup
   listing every tree binding; pressing any key closes it and runs that
   binding.

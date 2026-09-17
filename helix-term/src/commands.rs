@@ -3295,10 +3295,8 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
 /// Open (or re-root) the file tree window at `root`.
 fn open_file_tree(cx: &mut Context, root: PathBuf) {
     cx.editor.file_tree_window.open = true;
-    cx.replace_or_push_layer(
-        ui::file_tree::ID,
-        ui::file_tree::FileTree::new(root, cx.editor),
-    );
+    let tree = ui::file_tree::FileTree::new(root, cx.editor);
+    cx.replace_or_push_layer(ui::file_tree::ID, tree);
 }
 
 fn file_tree(cx: &mut Context) {
@@ -6048,18 +6046,52 @@ fn save_selection(cx: &mut Context) {
 }
 
 fn rotate_view(cx: &mut Context) {
+    // The file tree is an ordinary window in the rotation: when the editor
+    // is focused the tree is the next window, and leaving the tree moves on
+    // to the next editor split.
+    if cx.editor.file_tree_window.open {
+        if cx.editor.file_tree_window.focused {
+            cx.editor.file_tree_window.focused = false;
+            cx.editor.focus_next();
+        } else {
+            cx.editor.file_tree_window.focused = true;
+        }
+        return;
+    }
     cx.editor.focus_next()
 }
 
 fn rotate_view_reverse(cx: &mut Context) {
+    if cx.editor.file_tree_window.open {
+        if cx.editor.file_tree_window.focused {
+            cx.editor.file_tree_window.focused = false;
+            cx.editor.focus_prev();
+        } else {
+            cx.editor.file_tree_window.focused = true;
+        }
+        return;
+    }
     cx.editor.focus_prev()
 }
 
 fn jump_view_right(cx: &mut Context) {
+    // The editor is the next window to the right of the tree.
+    if cx.editor.file_tree_window.open && cx.editor.file_tree_window.focused {
+        cx.editor.file_tree_window.focused = false;
+        return;
+    }
     cx.editor.focus_direction(tree::Direction::Right)
 }
 
 fn jump_view_left(cx: &mut Context) {
+    // The tree is the leftmost window, so `C-w h` (or `space-w h`) always
+    // lands on it when it is open; from the tree there is nothing further.
+    if cx.editor.file_tree_window.open {
+        if !cx.editor.file_tree_window.focused {
+            cx.editor.file_tree_window.focused = true;
+        }
+        return;
+    }
     cx.editor.focus_direction(tree::Direction::Left)
 }
 

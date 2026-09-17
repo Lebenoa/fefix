@@ -1013,12 +1013,14 @@ async fn q_closes_tree_while_focused() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn question_mark_opens_keymap_modal() -> anyhow::Result<()> {
-    // `?` (Shift+/) opens the which-key style keymap modal while the tree is
-    // focused. Both representations are accepted: the shifted character `?`
-    // (legacy terminals) and the physical key `/` with the SHIFT modifier
-    // (Kitty keyboard protocol / enhanced reporting). Keys fall through it:
-    // `?<esc>` dismisses the modal without closing the tree, `?q` dismisses
-    // it and then closes the tree.
+    // `?` (Shift+/) shows the which-key style keymap modal while the tree is
+    // focused: an `autoinfo` popup rendered by the editor exactly like the
+    // one the `space` leader key shows, so it appears in the same position.
+    // Both representations are accepted: the shifted character `?` (legacy
+    // terminals) and the physical key `/` with the SHIFT modifier (Kitty
+    // keyboard protocol / enhanced reporting). Any key closes it and runs
+    // that binding: `?<esc>` dismisses without closing the tree, `?q`
+    // dismisses and then closes the tree.
     let mut config = test_config();
     config.editor.file_tree.enable = true;
     let mut app = AppBuilder::new().with_config(config).build()?;
@@ -1027,29 +1029,97 @@ async fn question_mark_opens_keymap_modal() -> anyhow::Result<()> {
         vec![
             (Some("<space>e"), None),
             (
-                Some("?<esc>"),
+                Some("?"),
                 Some(&|app: &Application| {
+                    assert!(app.editor.autoinfo.is_some());
                     assert!(app.editor.file_tree_window.open);
                 }),
             ),
             (
-                Some("<S-/><esc>"),
+                Some("<esc>"),
                 Some(&|app: &Application| {
+                    assert!(app.editor.autoinfo.is_none());
                     assert!(app.editor.file_tree_window.open);
+                }),
+            ),
+            (
+                Some("<S-/>"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.autoinfo.is_some());
+                }),
+            ),
+            (
+                Some("<esc>"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.autoinfo.is_none());
                 }),
             ),
             (
                 // Shift+? reported as the shifted character with the SHIFT
                 // modifier (disambiguate-only terminals).
-                Some("<S-?><esc>"),
+                Some("<S-?>"),
                 Some(&|app: &Application| {
-                    assert!(app.editor.file_tree_window.open);
+                    assert!(app.editor.autoinfo.is_some());
                 }),
             ),
             (
                 Some("?q"),
                 Some(&|app: &Application| {
+                    assert!(app.editor.autoinfo.is_none());
                     assert!(!app.editor.file_tree_window.open);
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn window_commands_move_focus_between_tree_and_editor() -> anyhow::Result<()> {
+    // The tree behaves like an ordinary helix window: `C-w w` rotates it into
+    // the window cycle, `C-w h` jumps to it as the leftmost window, and
+    // `C-w l` / `C-w w` from the tree hand focus back to the editor.
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new().with_config(config).build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            (
+                Some("<esc>"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.file_tree_window.open);
+                    assert!(!app.editor.file_tree_window.focused);
+                }),
+            ),
+            // The tree is the next window in the rotation.
+            (
+                Some("<C-w>w"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.file_tree_window.focused);
+                }),
+            ),
+            // From the tree, `C-w w` moves to the next window (the editor).
+            (
+                Some("<C-w>w"),
+                Some(&|app: &Application| {
+                    assert!(!app.editor.file_tree_window.focused);
+                }),
+            ),
+            // The tree is the leftmost window.
+            (
+                Some("<C-w>h"),
+                Some(&|app: &Application| {
+                    assert!(app.editor.file_tree_window.focused);
+                }),
+            ),
+            // `C-w l` from the tree returns to the editor.
+            (
+                Some("<C-w>l"),
+                Some(&|app: &Application| {
+                    assert!(!app.editor.file_tree_window.focused);
                 }),
             ),
         ],

@@ -11,7 +11,9 @@
 //! (case-insensitive). The first typed character loads the whole tree so
 //! matches are found anywhere, not just under expanded directories; `Esc`
 //! clears the filter and restores the tree. `?` shows a which-key style popup
-//! listing every binding while the tree is focused.
+//! listing every binding while the tree is focused. The tree is part of the
+//! window navigation: `C-w w` rotates it into the window cycle, `C-w h` jumps
+//! to it as the leftmost window, and `C-w l` / `C-w w` return to the editor.
 
 use std::{
     cell::RefCell,
@@ -22,9 +24,9 @@ use std::{
 
 use helix_view::{
     editor::{Action, FileTreeConfig},
-    graphics::{CursorKind, Margin, Modifier, Rect},
+    graphics::{CursorKind, Rect},
+    info::Info,
     input::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
-    theme::Theme,
     Editor,
 };
 use tui::buffer::Buffer as Surface;
@@ -480,14 +482,14 @@ pub struct FileTree {
     area: Rect,
     /// Whether to render Nerd Font folder/file icons instead of ASCII arrows.
     icons: bool,
-    /// Whether keyboard input is currently routed to the tree rather than to
-    /// the editor. While `false` the window stays visible but ignores keys,
-    /// so the editor underneath works normally.
-    focused: bool,
     /// Whether a filter is being edited: while `true` a search bar is shown at
     /// the top of the tree and the visible entries are narrowed to the
     /// `filter` query.
     filtering: bool,
+    /// Whether the `C-w` window prefix has been pressed: the next key
+    /// navigates between the tree and the editor splits like \"C-w h\" does
+    /// in the editor.
+    window_prefix: bool,
     /// Whether the which-key style keymap modal is open (toggled with `?`
     /// while the tree is focused): the bindings overlay the tree, and any
     /// key closes them and then runs that binding.
@@ -506,7 +508,7 @@ pub struct FileTree {
 impl FileTree {
     /// Create a new file tree window rooted at `root`, revealing the current
     /// buffer if it is located under the root and taking keyboard focus.
-    pub fn new(root: PathBuf, editor: &Editor) -> Self {
+    pub fn new(root: PathBuf, editor: &mut Editor) -> Self {
         let config = editor.config().file_tree.clone();
         let icons = config.icons.enabled();
         let root = helix_stdx::path::normalize(root);
@@ -514,13 +516,14 @@ impl FileTree {
         if let Some(path) = doc!(editor).path() {
             tree.reveal(&helix_stdx::path::normalize(path));
         }
+        editor.file_tree_window.focused = true;
         Self {
             tree,
             offset: 0,
             area: Rect::default(),
             icons,
-            focused: true,
             filtering: false,
+            window_prefix: false,
             show_keymap: false,
             filter: String::new(),
             resizing: None,
@@ -599,7 +602,8 @@ impl FileTree {
             ctx.editor.set_error(err);
             return EventResult::Consumed(None);
         }
-        self.focused = false;
+        ctx.editor.file_tree_window.focused = false;
+        ctx.editor.autoinfo = None;
         // Opening a file hands focus to the editor; leave filter mode so the
         // next visit starts from the full tree.
         self.clear_filter();
@@ -627,7 +631,8 @@ impl FileTree {
                 self.resizing = None;
                 if !inside {
                     // Scrolling over the editor hands focus to it as well.
-                    self.focused = false;
+                    ctx.editor.file_tree_window.focused = false;
+                    ctx.editor.autoinfo = None;
                     return EventResult::Ignored(None);
                 }
                 if kind == MouseEventKind::ScrollDown {
@@ -645,10 +650,11 @@ impl FileTree {
                 self.resizing = None;
                 if !inside {
                     // Clicking outside the tree hands focus to the editor.
-                    self.focused = false;
+                    ctx.editor.file_tree_window.focused = false;
+                    ctx.editor.autoinfo = None;
                     return EventResult::Ignored(None);
                 }
-                self.focused = true;
+                ctx.editor.file_tree_window.focused = true;
                 // The search bar occupies the first row while filtering, so
                 // the entry rows below it are shifted by one.
                 let local_row = (row - area.top()).saturating_sub(u16::from(self.filtering));
@@ -828,7 +834,7 @@ impl Component for FileTree {
         }
         // Without keyboard focus the window sits in the background: every
         // other input falls through to the editor underneath.
-        if !self.focused {
+        if !ctx.editor.file_tree_window.focused {
             return EventResult::Ignored(None);
         }
         let key_event = match event {
@@ -836,6 +842,27 @@ impl Component for FileTree {
             Event::Paste(..) | Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
+
+        // `C-w` opens the window prefix, mirroring the editor's \"C-w\" mode:
+        // the next key moves focus between the tree and the editor splits.
+        if self.window_prefix {
+            self.window_prefix = false;
+            match key_event {
+                key!(Esc) => return EventResult::Consumed(None),
+                // The editor is the next window to the right of the tree.
+                key!('w') | ctrl!('w') | key!('W') | shift!('w') | key!('l') | key!(Right) => {
+                    ctx.editor.file_tree_window.focused = false;
+                    return EventResult::Consumed(None);
+                }
+                // The tree is the leftmost (and full-height) window; there is
+                // nowhere to go in these directions.
+                key!('h') | key!(Left) | key!('k') | key!(Up) | key!('j') | key!(Down) => {
+                    return EventResult::Consumed(None);
+                }
+                // Any other key cancels the prefix and runs normally below.
+                _ => {}
+            }
+        }
 
         // While a filter is being edited, printable characters extend the
         // query (the search bar at the top shows it); navigation keys fall
@@ -876,6 +903,7 @@ impl Component for FileTree {
         // straight from the modal. `Esc` only dismisses it.
         if self.show_keymap {
             self.show_keymap = false;
+            ctx.editor.autoinfo = None;
             match key_event {
                 key!(Esc) | ctrl!('c') => return EventResult::Consumed(None),
                 _ => {}
@@ -883,19 +911,29 @@ impl Component for FileTree {
         }
 
         match key_event {
+            ctrl!('w') => {
+                // Start the window prefix (see above).
+                self.window_prefix = true;
+            }
             // `?` is Shift+/; terminals disagree on how they report it:
             // legacy terminals send just the shifted character `Char('?')`,
             // crossterm's "disambiguate only" / Windows Terminal send the
             // shifted character with the SHIFT modifier set, and the full
             // kitty protocol sends the physical key `Char('/')` with SHIFT.
             // Accept all three; Ctrl/Alt-? is not the help key.
-            KeyEvent { code: KeyCode::Char(c), modifiers }
-                if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
-                    && (c == '?' || (c == '/' && modifiers.contains(KeyModifiers::SHIFT))) =>
+            KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers,
+            } if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+                && (c == '?' || (c == '/' && modifiers.contains(KeyModifiers::SHIFT))) =>
             {
-                // Which-key style help: overlay the bindings; any key closes
-                // the overlay and runs that binding (see above).
+                // Which-key style help: the popup is an `Info` box rendered by
+                // the editor view exactly like the one shown after the `space`
+                // leader key, so it appears in the same position; any key
+                // closes it and runs that binding (see the dismissal block
+                // above).
                 self.show_keymap = true;
+                ctx.editor.autoinfo = Some(keymap_info());
             }
             key!('/') => {
                 // Start filtering the tree to matching paths.
@@ -940,7 +978,7 @@ impl Component for FileTree {
             }
             key!(Esc) | ctrl!('c') => {
                 // Hand focus back to the editor; the window stays open.
-                self.focused = false;
+                ctx.editor.file_tree_window.focused = false;
                 return EventResult::Ignored(None);
             }
             key!('q') => {
@@ -1062,17 +1100,12 @@ impl Component for FileTree {
             };
             // Only the focused window highlights its selection; unfocused it
             // stays in the background like an inactive split.
-            let style = if self.focused && row == selected_index {
+            let style = if ctx.editor.file_tree_window.focused && row == selected_index {
                 base_style.patch(selected_style)
             } else {
                 base_style
             };
             surface.set_stringn(tree_area.x, y, &line, tree_area.width as usize, style);
-        }
-
-        // The which-key style keymap modal overlays everything while open.
-        if self.show_keymap {
-            render_keymap(surface, &ctx.editor.theme);
         }
     }
 
@@ -1085,13 +1118,12 @@ impl Component for FileTree {
     }
 }
 
-/// Draw the which-key style keymap modal, centred over the whole screen so it
-/// stays readable regardless of the tree's width. Toggled with `?` while the
-/// tree is focused; in `handle_event` any key closes it and then runs the
-/// binding, mirroring which-key behaviour.
-fn render_keymap(surface: &mut Surface, theme: &Theme) {
-    use tui::widgets::{Block, Widget};
-
+/// The which-key style keymap popup shown with `?` while the tree is focused:
+/// an [`Info`] box handed to the editor view, exactly like the popup the
+/// `space` leader key shows while waiting for the next key, so it renders in
+/// the same position and style. Any key closes it (see the dismissal block in
+/// [`FileTree::handle_event`]) and then runs that binding.
+fn keymap_info() -> Info {
     const BINDINGS: &[(&str, &str)] = &[
         ("k/↑, j/↓", "move selection"),
         ("ctrl-p/n", "move selection (alternate)"),
@@ -1103,52 +1135,12 @@ fn render_keymap(surface: &mut Surface, theme: &Theme) {
         ("r", "refresh selected directory"),
         ("q", "close the tree"),
         ("Esc", "hand focus back to the editor"),
+        ("C-w w", "focus next window (editor)"),
+        ("C-w h", "no-op: tree is leftmost"),
+        ("C-w l", "focus the editor"),
         ("?", "show this help"),
     ];
-
-    let viewport = *surface.area();
-    // Heading row, blank row, then one row per binding, plus the borders.
-    let height = (BINDINGS.len() as u16 + 4).min(viewport.height.saturating_sub(2));
-    let key_col = 20_u16;
-    let width = (key_col + 32).min(viewport.width.saturating_sub(2));
-    if height < BINDINGS.len() as u16 + 2 || width < 32 {
-        return;
-    }
-    let modal = Rect {
-        x: viewport.x + (viewport.width.saturating_sub(width)) / 2,
-        y: viewport.y + (viewport.height.saturating_sub(height)) / 2,
-        width,
-        height,
-    };
-
-    surface.clear_with(modal, theme.get("ui.popup"));
-    Widget::render(Block::bordered(), modal, surface);
-
-    let inner = modal.inner(Margin::all(1));
-    let key_style = theme.get("ui.text").add_modifier(Modifier::BOLD);
-    let desc_style = theme.get("ui.help");
-    surface.set_stringn(
-        inner.x + 1,
-        inner.y,
-        "File tree keys",
-        inner.width.saturating_sub(2) as usize,
-        theme.get("ui.text.focus"),
-    );
-    let mut y = inner.y + 2;
-    for (keys, desc) in BINDINGS {
-        if y >= inner.bottom() {
-            break;
-        }
-        surface.set_stringn(inner.x + 1, y, keys, key_col as usize, key_style);
-        surface.set_stringn(
-            inner.x + 1 + key_col,
-            y,
-            desc,
-            inner.width.saturating_sub(2 + key_col) as usize,
-            desc_style,
-        );
-        y += 1;
-    }
+    Info::new("File tree", &BINDINGS)
 }
 
 #[cfg(test)]
@@ -1494,43 +1486,5 @@ mod tests {
         };
         let tree = Tree::new(tmp.path().to_path_buf(), config);
         assert_eq!(visible_paths(&tree), vec!["", "visible.rs"]);
-    }
-
-    #[test]
-    fn keymap_modal_renders_bindings_centred() {
-        use helix_view::theme::DEFAULT_THEME;
-
-        // A helper reconstructing a row of the surface as text (first
-        // grapheme of each cell), so the drawn modal can be searched.
-        fn row_text(surface: &Surface, y: u16) -> String {
-            (0..surface.area().width)
-                .map(|x| surface[(x, y)].symbol.chars().next().unwrap_or(' '))
-                .collect()
-        }
-
-        let mut surface = Surface::empty(Rect::new(0, 0, 80, 24));
-        render_keymap(&mut surface, &DEFAULT_THEME);
-
-        // The modal is centred: the heading sits above the bindings, both
-        // within the middle of the screen.
-        let rows: Vec<String> = (0..24).map(|y| row_text(&surface, y)).collect();
-        let heading = rows
-            .iter()
-            .position(|row| row.contains("File tree keys"))
-            .expect("heading drawn");
-        assert!(heading > 0 && heading < 23, "heading not centred: {heading}");
-        let bindings: Vec<usize> = rows
-            .iter()
-            .enumerate()
-            .filter(|(_, row)| row.contains("move selection") || row.contains("show this help"))
-            .map(|(y, _)| y)
-            .collect();
-        assert_eq!(bindings.len(), 3, "first and last binding rows drawn: {rows:?}");
-        // The key column and its description share a row.
-        assert!(rows[bindings[0]].contains("k/↑, j/↓"));
-        assert!(rows[bindings[0]].contains("move selection"));
-        assert!(rows[bindings[2]].contains("show this help"));
-        // A bordered popup: the top border row contains corner/edge glyphs.
-        assert!(rows[heading - 1].contains('┌') || rows[heading - 1].contains('─'));
     }
 }

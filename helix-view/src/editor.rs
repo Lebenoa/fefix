@@ -390,11 +390,16 @@ fn contains_nerd(bytes: &[u8]) -> bool {
 /// Shared, session-wide state of the file tree window. Both the file tree
 /// component and the editor viewport layout read it so they agree on whether
 /// the window is open and how many columns its content occupies; dragging the
-/// separator between the tree and the editor resizes it live.
+/// separator between the tree and the editor resizes it live. The focus flag
+/// lets the window commands ("C-w w", "C-w h", ...) move keyboard focus
+/// between the editor and the tree like between split windows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct FileTreeState {
     /// Whether the window is currently open.
     pub open: bool,
+    /// Whether keyboard input is currently routed to the tree rather than to
+    /// the editor.
+    pub focused: bool,
     /// Content width in columns (excluding the separator column). `0` falls
     /// back to the `[editor.file-tree] width` configuration value.
     pub width: u16,
