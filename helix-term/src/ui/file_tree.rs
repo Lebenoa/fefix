@@ -213,6 +213,8 @@ struct Tree {
     entries: Vec<TreeEntry>,
     /// Path of the currently selected entry.
     selected: PathBuf,
+    /// Batch marks are paths, independent of cursor, expansion and filtering.
+    marked: HashSet<PathBuf>,
     config: FileTreeConfig,
 }
 
@@ -224,6 +226,7 @@ impl Tree {
         root_entry.children = read_children(&root, &config);
         let mut tree = Self {
             selected: root.clone(),
+            marked: HashSet::new(),
             root,
             entries: vec![root_entry],
             config,
@@ -496,6 +499,194 @@ impl Tree {
             }
         }
         rec(&mut self.entries, old, new);
+        self.marked = self
+            .marked
+            .drain()
+            .map(|path| match path.strip_prefix(old) {
+                Ok(relative) => new.join(relative),
+                Err(_) => path,
+            })
+            .collect();
+    }
+
+    fn toggle_mark(&mut self) {
+        if self.selected != self.root
+            && Self::find(&self.entries, &self.selected).is_some()
+            && !self.marked.remove(&self.selected)
+        {
+            self.marked.insert(self.selected.clone());
+        }
+    }
+
+    /// Snapshot the batch; a marked ancestor already covers its descendants.
+    fn deletion_targets(&self) -> Vec<PathBuf> {
+        if self.marked.is_empty() {
+            return self
+                .selected_path()
+                .filter(|path| path != &self.root)
+                .into_iter()
+                .collect();
+        }
+        let mut targets: Vec<_> = self
+            .marked
+            .iter()
+            .filter(|path| {
+                path.as_path() != self.root
+                    && path.starts_with(&self.root)
+                    && !path
+                        .ancestors()
+                        .skip(1)
+                        .any(|ancestor| self.marked.contains(ancestor))
+            })
+            .cloned()
+            .collect();
+        targets.sort_unstable();
+        targets
+    }
+
+    /// Continue after errors; only successful deletions leave the mark buffer.
+    fn delete_paths(&mut self, paths: &[PathBuf]) -> (usize, Vec<String>) {
+        let mut deleted = 0;
+        let mut errors = Vec::new();
+        for path in paths {
+            if path == &self.root || !path.starts_with(&self.root) {
+                errors.push(format!("Cannot delete {}", path.display()));
+                continue;
+            }
+            let result = std::fs::symlink_metadata(path).and_then(|metadata| {
+                if metadata.is_dir() {
+                    std::fs::remove_dir_all(path)
+                } else {
+                    // Windows directory links require remove_dir, not remove_file.
+                    #[cfg(windows)]
+                    {
+                        use std::os::windows::fs::FileTypeExt;
+                        if metadata.file_type().is_symlink_dir() {
+                            return std::fs::remove_dir(path);
+                        }
+                    }
+                    std::fs::remove_file(path)
+                }
+            });
+            match result {
+                Ok(()) => {
+                    deleted += 1;
+                    forget_expanded(&self.root, path);
+                    self.remove(path);
+                    self.marked.retain(|marked| !marked.starts_with(path));
+                }
+                Err(err) => errors.push(format!("Failed to delete {}: {err}", path.display())),
+            }
+        }
+        (deleted, errors)
+    }
+
+    /// Reparent the entry at `path` to the directory `dest` after the
+    /// filesystem move succeeded, rewriting its path and those of its loaded
+    /// descendants and remapping the marks under it. The destination directory
+    /// is expanded (loading it if needed) so the moved node has a home. The
+    /// destination parent is expanded through the same `expand` helper.
+    fn move_into(&mut self, path: &Path, dest: &Path) {
+        let Some(name) = path.file_name() else {
+            return;
+        };
+        let new_path = dest.join(name);
+        self.expand(dest);
+        // Lift the node out of whatever ancestor chain holds it.
+        let Some(mut node) = self.take_entry(path) else {
+            return;
+        };
+        // Rewrite the node's path and every loaded descendant to the new
+        // location.
+        fn rewrite(entry: &mut TreeEntry, old: &Path, new_parent: &Path) {
+            if let Ok(rel) = entry.path.strip_prefix(old) {
+                entry.path = new_parent.join(rel);
+            }
+            for child in entry.children.iter_mut() {
+                rewrite(child, old, new_parent);
+            }
+        }
+        rewrite(&mut node, path, &new_path);
+        if let Some(dest_entry) = Self::find_mut(&mut self.entries, dest) {
+            dest_entry.children.push(node);
+            dest_entry.loaded = true;
+        }
+        forget_expanded(&self.root, path);
+        remember_expanded(&self.root, dest);
+    }
+
+    /// Remove the entry at `path` (and its loaded subtree) from the tree,
+    /// returning it. The root cannot be removed, yielding `None`.
+    fn take_entry(&mut self, path: &Path) -> Option<TreeEntry> {
+        fn take_rec(entries: &mut Vec<TreeEntry>, path: &Path) -> Option<TreeEntry> {
+            if let Some(index) = entries.iter().position(|entry| entry.path == path) {
+                return Some(entries.remove(index));
+            }
+            for entry in entries.iter_mut() {
+                if let Some(found) = take_rec(&mut entry.children, path) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+        if path == self.root {
+            return None;
+        }
+        take_rec(&mut self.entries, path)
+    }
+
+    /// Move the given entry paths into the directory `dest`. Only successful
+    /// moves reparent their entry node and clear its mark; failures are
+    /// reported and left in place. Returns the number moved and per-failure
+    /// messages.
+    fn move_paths(&mut self, paths: &[PathBuf], dest: &Path) -> (usize, Vec<String>) {
+        let mut moved = 0;
+        let mut errors = Vec::new();
+        let mut successes = Vec::new();
+        for path in paths {
+            if path == &self.root
+                || !path.starts_with(&self.root)
+                || path == dest
+                || dest.starts_with(path)
+            {
+                errors.push(format!("Cannot move {}", path.display()));
+                continue;
+            }
+            let Some(name) = path.file_name() else {
+                errors.push(format!("Failed to move {}: no file name", path.display()));
+                continue;
+            };
+            let target = dest.join(name);
+            if target == *path {
+                continue;
+            }
+            match std::fs::rename(path, &target) {
+                Ok(()) => {
+                    moved += 1;
+                    successes.push((path.clone(), target.clone()));
+                }
+                Err(err) => errors.push(format!("Failed to move {}: {err}", path.display())),
+            }
+        }
+        for (old, target) in successes {
+            // A mark on the moved item itself (or, for a directory, on any
+            // of its moved descendants) is remapped so it still refers to the
+            // entry now that it lives under `target`.
+            let old_prefix = old.clone();
+            self.marked = self
+                .marked
+                .drain()
+                .map(|m| {
+                    if m.starts_with(&old_prefix) {
+                        target.join(m.strip_prefix(&old_prefix).unwrap_or(Path::new("")))
+                    } else {
+                        m
+                    }
+                })
+                .collect();
+            self.move_into(&old, dest);
+        }
+        (moved, errors)
     }
 }
 
@@ -580,15 +771,19 @@ pub struct FileTree {
     /// The current filter query (see [`FileTree::filtering`]). Empty when no
     /// filter is active.
     filter: String,
-    /// The entry waiting for a second `d` / `Delete` press to confirm its
-    /// deletion, or `None` when no deletion is armed. Any other key (or
-    /// moving the selection) cancels the arming.
-    pending_delete: Option<PathBuf>,
+    /// Snapshot waiting for a second `d` / `Delete`. Other input cancels it.
+    pending_delete: Option<Vec<PathBuf>>,
     /// Whether a rename is being edited: while `true` a bar at the top shows
     /// the new name, and `Enter` renames the selected entry.
     renaming: bool,
     /// The new name being typed (see [`FileTree::renaming`]).
     rename_input: String,
+    /// Whether a destination is being edited for moving the marked entry (or
+    /// cursor entry when nothing is marked): while `true` a bar at the top
+    /// shows the destination, and `Enter` moves.
+    moving: bool,
+    /// The destination path being typed (see [`FileTree::moving`]).
+    move_input: String,
     /// The (column, content width) pair captured when a separator drag
     /// started, or `None` when not resizing.
     resizing: Option<(u16, u16)>,
@@ -624,6 +819,8 @@ impl FileTree {
             pending_delete: None,
             renaming: false,
             rename_input: String::new(),
+            moving: false,
+            move_input: String::new(),
             resizing: None,
             last_auto_refresh: std::time::Instant::now(),
             max_width: 0,
@@ -802,45 +999,101 @@ impl FileTree {
     /// Permanently delete the selected file or directory (`d`, `Delete`).
     /// The selection moves to the entry that took its place, or to the
     /// parent directory when nothing remains.
-    fn delete_selected(&mut self, ctx: &mut Context) {
-        let selected = self.tree.selected.clone();
-        if selected == self.tree.root {
+    fn delete_selected(&mut self, paths: &[PathBuf], ctx: &mut Context) {
+        let visible = self.visible_entries();
+        let index = self.tree.selected_index(&visible);
+        drop(visible);
+        let (deleted, errors) = self.tree.delete_paths(paths);
+        let visible = self.visible_entries();
+        let index = index.min(visible.len().saturating_sub(1));
+        let next = visible.get(index).map(|(entry, _)| entry.path.clone());
+        drop(visible);
+        if let Some(path) = next {
+            self.tree.select(&path);
+        }
+        if errors.is_empty() {
+            ctx.editor.set_status(format!("Deleted {deleted} entries"));
+        } else {
             ctx.editor
-                .set_error("Cannot delete the tree root directory");
+                .set_error(format!("Deleted {deleted} entries; {}", errors.join("; ")));
+        }
+    }
+
+    /// Open a destination bar for moving the marked entry (or the cursor
+    /// entry when nothing is marked), prefilled with the selected entry's
+    /// parent directory so the user edits the destination.
+    fn start_move(&mut self) {
+        let selected = self.tree.selected.clone();
+        let prefix = selected
+            .parent()
+            .map(|parent| parent.display().to_string())
+            .unwrap_or_else(|| self.tree.root.display().to_string());
+        self.move_input = prefix;
+        self.moving = true;
+    }
+
+    /// Move the marked entry (or the cursor entry when nothing is marked)
+    /// into the destination typed in the move bar (`m` then `Enter`). On
+    /// success the tree paths are reparented and moved marks follow; on
+    /// failure an error is shown and the bar stays open.
+    fn commit_move(&mut self, ctx: &mut Context) {
+        let input = self.move_input.trim();
+        if input.is_empty() {
+            ctx.editor.set_error("Destination cannot be empty");
             return;
         }
-        let visible = self.tree.visible();
-        let index = self.tree.selected_index(&visible);
-        let Some(is_dir) = visible.get(index).map(|(entry, _)| entry.is_dir) else {
+        // Resolve a relative destination against the tree root so bare names
+        // like `sub` point inside the root.
+        let dest_path = PathBuf::from(input);
+        let dest = if dest_path.is_absolute() {
+            dest_path
+        } else {
+            self.tree.root.join(&dest_path)
+        };
+        let Some(dest) = dest.canonicalize().ok() else {
+            ctx.editor
+                .set_error(format!("Destination {input} does not exist"));
             return;
         };
-        drop(visible);
-        let result = if is_dir {
-            std::fs::remove_dir_all(&selected)
+        if !dest.is_dir() {
+            ctx.editor
+                .set_error(format!("Destination {} is not a directory", dest.display()));
+            return;
+        }
+        let paths = if self.tree.marked.is_empty() {
+            self.tree
+                .selected_path()
+                .map(|p| vec![p])
+                .unwrap_or_default()
         } else {
-            std::fs::remove_file(&selected)
+            self.tree.deletion_targets()
         };
-        match result {
-            Ok(()) => {
-                forget_expanded(&self.tree.root, &selected);
-                self.tree.remove(&selected);
-                // The entry at the same index (clamped) follows, so the
-                // selection lands on its replacement rather than jumping to
-                // the beginning of the tree.
-                let visible = self.tree.visible();
-                let index = index.min(visible.len().saturating_sub(1));
-                let next = visible.get(index).map(|(entry, _)| entry.path.clone());
-                drop(visible);
-                if let Some(path) = next {
-                    self.tree.select(&path);
+        // The destination must not be one of the move targets themselves.
+        if paths.iter().any(|p| *p == dest || dest.starts_with(p)) {
+            ctx.editor
+                .set_error("Destination must be a directory outside the items being moved");
+            return;
+        }
+        let (moved_count, errors) = self.tree.move_paths(&paths, &dest);
+        self.moving = false;
+        self.move_input.clear();
+        if moved_count > 0 {
+            if let Some(last) = paths.last() {
+                let mut moved_path = last.clone();
+                if let Some(name) = moved_path.file_name() {
+                    moved_path = dest.join(name);
                 }
-                ctx.editor
-                    .set_status(format!("Deleted {}", selected.display()));
+                self.tree.select(&moved_path);
             }
-            Err(err) => {
-                ctx.editor
-                    .set_error(format!("Failed to delete {}: {err}", selected.display()));
-            }
+        }
+        if errors.is_empty() {
+            ctx.editor
+                .set_status(format!("Moved {moved_count} entries"));
+        } else {
+            ctx.editor.set_error(format!(
+                "Moved {moved_count} entries; {}",
+                errors.join("; ")
+            ));
         }
     }
 
@@ -855,6 +1108,8 @@ impl FileTree {
         }
         self.pending_delete = None;
         self.renaming = false;
+        self.moving = false;
+        self.move_input.clear();
         let area = self.area;
         // The separator column doubles as the resize handle. Only events over
         // the tree's own columns belong to the tree; anything else falls
@@ -1150,11 +1405,10 @@ impl Component for FileTree {
         // same entry confirms it, `Esc`/`Ctrl-c` cancels it, and any other key
         // cancels the arming and runs normally below (e.g. moving the
         // selection).
-        if let Some(path) = self.pending_delete.clone() {
-            self.pending_delete = None;
+        if let Some(paths) = self.pending_delete.take() {
             match key_event {
-                key!('d') | key!(Delete) if path == self.tree.selected => {
-                    self.delete_selected(ctx);
+                key!('d') | key!(Delete) if paths == self.tree.deletion_targets() => {
+                    self.delete_selected(&paths, ctx);
                     return EventResult::Consumed(None);
                 }
                 key!(Esc) | ctrl!('c') => {
@@ -1188,6 +1442,36 @@ impl Component for FileTree {
                     modifiers,
                 } if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) => {
                     self.rename_input.push(c);
+                    return EventResult::Consumed(None);
+                }
+                _ => return EventResult::Consumed(None),
+            }
+        }
+
+        // While a destination is being edited for moving, printable
+        // characters extend the path in the bar at the top; `Enter` moves the
+        // marked entry (or the cursor entry) into it and `Esc` cancels. Every
+        // other key is consumed so the selection cannot drift.
+        if self.moving {
+            match key_event {
+                key!(Esc) | ctrl!('c') => {
+                    self.moving = false;
+                    self.move_input.clear();
+                    return EventResult::Consumed(None);
+                }
+                key!(Enter) => {
+                    self.commit_move(ctx);
+                    return EventResult::Consumed(None);
+                }
+                key!(Backspace) | shift!(Backspace) => {
+                    self.move_input.pop();
+                    return EventResult::Consumed(None);
+                }
+                KeyEvent {
+                    code: KeyCode::Char(c),
+                    modifiers,
+                } if !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) => {
+                    self.move_input.push(c);
                     return EventResult::Consumed(None);
                 }
                 _ => return EventResult::Consumed(None),
@@ -1279,30 +1563,45 @@ impl Component for FileTree {
                 });
                 return EventResult::Consumed(Some(callback));
             }
+            key!(' ') => {
+                self.tree.toggle_mark();
+                ctx.editor
+                    .set_status(format!("{} marked", self.tree.marked.len()));
+            }
+            crate::alt!(' ') => {
+                self.tree.marked.clear();
+                ctx.editor.set_status("Selection cleared");
+            }
             key!('r') => {
                 self.start_rename();
             }
             key!('R') | shift!('r') => {
                 self.tree.refresh(&self.tree.selected.clone());
             }
+            key!('m') => {
+                self.start_move();
+            }
             key!('d') | key!(Delete) => {
-                // First press arms the deletion; a second press on the same
-                // entry confirms it (see the pending-delete block above).
-                let selected = self.tree.selected.clone();
-                if selected == self.tree.root {
+                let paths = self.tree.deletion_targets();
+                if paths.is_empty() {
                     ctx.editor
                         .set_error("Cannot delete the tree root directory");
                 } else {
-                    self.pending_delete = Some(selected.clone());
+                    let names = paths
+                        .iter()
+                        .map(|path| {
+                            path.strip_prefix(&self.tree.root)
+                                .unwrap_or(path)
+                                .display()
+                                .to_string()
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
                     ctx.editor.set_status(format!(
-                        "Press {} again to delete {}",
-                        if key_event.code == KeyCode::Delete {
-                            "Delete"
-                        } else {
-                            "d"
-                        },
-                        selected.display()
+                        "Press d/Delete again to permanently delete {} entries (directories recursively): {names}",
+                        paths.len()
                     ));
+                    self.pending_delete = Some(paths);
                 }
             }
             _ => {}
@@ -1350,18 +1649,18 @@ impl Component for FileTree {
             }
         }
 
-        // The search / rename bar occupies the first row while one is active;
-        // the rows below it (minus the editor's statusline / commandline rows)
-        // hold tree entries.
-        let bar_rows = u16::from(self.filtering || self.renaming);
+        // The search / rename / move bar occupies the first row while one is
+        // active; the rows below it (minus the editor's statusline /
+        // commandline rows) hold tree entries.
+        let bar_rows = u16::from(self.filtering || self.renaming || self.moving);
         let height = tree_area.height.saturating_sub(2 + bar_rows) as usize;
         if height == 0 {
             return;
         }
 
-        // While filtering or renaming, highlight the first row as the input
-        // bar showing the current query / new name.
-        if self.filtering || self.renaming {
+        // While filtering, renaming or moving, highlight the first row as the
+        // input bar showing the current query / new name / destination.
+        if self.filtering || self.renaming || self.moving {
             let bar_style = theme.get("ui.text").patch(selected_style);
             surface.clear_with(
                 Rect {
@@ -1374,6 +1673,8 @@ impl Component for FileTree {
             );
             let bar = if self.filtering {
                 format!("/{}", self.filter)
+            } else if self.moving {
+                format!("move to: {}", self.move_input)
             } else {
                 format!("rename: {}", self.rename_input)
             };
@@ -1405,6 +1706,13 @@ impl Component for FileTree {
             let symbol = symbol_for(entry, self.icons, &self.tree.config.folder_icons);
 
             line.clear();
+            if !self.tree.marked.is_empty() {
+                line.push_str(if self.tree.marked.contains(&entry.path) {
+                    "* "
+                } else {
+                    "  "
+                });
+            }
             for _ in 0..*depth {
                 line.push(' ');
                 line.push(' ');
@@ -1454,7 +1762,10 @@ fn keymap_info() -> Info {
         ("/", "filter the tree"),
         ("r", "rename file/dir"),
         ("R", "refresh selected directory"),
-        ("d / Del", "delete file/dir (again to confirm)"),
+        ("m", "move marked or cursor entry to a directory"),
+        ("Space", "toggle batch mark"),
+        ("Alt-Space", "clear batch marks"),
+        ("d / Del", "delete marks or cursor entry (again to confirm)"),
         ("q", "close the tree"),
         ("Esc", "hand focus back to the editor"),
         ("C-w w", "focus next window (editor)"),
@@ -1834,6 +2145,70 @@ mod tests {
     }
 
     #[test]
+    fn batch_delete_deduplicates_parent_and_child_marks() {
+        let tmp = TempDir::new("batch-nested");
+        let dir = tmp.path().join("dir");
+        let child = dir.join("child");
+        let keep = tmp.path().join("keep");
+        write_file(&child);
+        write_file(&keep);
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        tree.reveal(&child);
+        tree.toggle_mark();
+        tree.select(&dir);
+        tree.toggle_mark();
+        tree.collapse(&dir);
+        tree.refresh_all();
+        let targets = tree.deletion_targets();
+        assert_eq!(targets, vec![dir.clone()]);
+        let (deleted, errors) = tree.delete_paths(&targets);
+        assert_eq!(deleted, 1);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert!(!dir.exists());
+        assert!(keep.exists());
+        assert!(tree.marked.is_empty());
+    }
+
+    #[test]
+    fn batch_delete_keeps_failed_marks_and_continues() {
+        let tmp = TempDir::new("batch-failure");
+        let missing = tmp.path().join("a-missing");
+        let present = tmp.path().join("b-present");
+        write_file(&missing);
+        write_file(&present);
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        for path in [&missing, &present] {
+            tree.select(path);
+            tree.toggle_mark();
+        }
+        fs::remove_file(&missing).unwrap();
+        let (deleted, errors) = tree.delete_paths(&tree.deletion_targets());
+        assert_eq!(deleted, 1);
+        assert_eq!(errors.len(), 1);
+        assert!(!present.exists());
+        assert_eq!(tree.marked, HashSet::from([missing]));
+    }
+
+    #[test]
+    fn batch_marks_follow_directory_rename() {
+        let tmp = TempDir::new("batch-rename");
+        let old = tmp.path().join("old");
+        let new = tmp.path().join("new");
+        let child = old.join("child");
+        write_file(&child);
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        tree.reveal(&child);
+        tree.toggle_mark();
+        fs::rename(&old, &new).unwrap();
+        tree.rename_paths(&old, &new);
+        let (deleted, errors) = tree.delete_paths(&tree.deletion_targets());
+        assert_eq!(deleted, 1);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert!(!new.join("child").exists());
+        assert!(new.is_dir());
+    }
+
+    #[test]
     fn hides_hidden_files_when_configured() {
         let tmp = TempDir::new("hidden");
         write_file(&tmp.path().join(".secret"));
@@ -1845,5 +2220,60 @@ mod tests {
         };
         let tree = Tree::new(tmp.path().to_path_buf(), config);
         assert_eq!(visible_paths(&tree), vec!["", "visible.rs"]);
+    }
+
+    #[test]
+    fn moves_a_file_into_a_directory() {
+        let tmp = TempDir::new("move-file");
+        let dest = tmp.path().join("sub");
+        write_file(&tmp.path().join("a.txt"));
+        fs::create_dir(&dest).unwrap();
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        tree.move_paths(&[tmp.path().join("a.txt")], &dest);
+        assert!(!tmp.path().join("a.txt").exists());
+        assert!(dest.join("a.txt").exists());
+        // The moved entry now lives under `sub` in the tree.
+        assert!(Tree::find(&tree.entries, &dest.join("a.txt")).is_some());
+    }
+
+    #[test]
+    fn moving_a_directory_moves_its_descendants_and_marks() {
+        let tmp = TempDir::new("move-dir");
+        let dest = tmp.path().join("sub");
+        let dir = tmp.path().join("dir");
+        fs::create_dir_all(&dir.join("nested")).unwrap();
+        write_file(&dir.join("nested").join("x.rs"));
+        fs::create_dir(&dest).unwrap();
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        tree.reveal(&dir.join("nested").join("x.rs"));
+        tree.select(&dir);
+        tree.toggle_mark();
+        let (moved, errors) = tree.move_paths(&[dir.clone()], &dest);
+        assert_eq!(moved, 1);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert!(!dir.exists());
+        assert!(dest.join("dir").join("nested").join("x.rs").exists());
+        // The directory entry and its loaded descendant are reparented under
+        // `sub`, and the mark follows to the moved directory.
+        assert!(Tree::find(&tree.entries, &dest.join("dir")).is_some());
+        assert!(Tree::find(&tree.entries, &dest.join("dir").join("nested").join("x.rs")).is_some());
+        assert!(tree.marked.contains(&dest.join("dir")));
+    }
+
+    #[test]
+    fn refusing_to_move_the_root_or_an_ancestor_of_destination() {
+        let tmp = TempDir::new("move-refuse");
+        let dest = tmp.path().join("sub");
+        fs::create_dir(&dest).unwrap();
+        write_file(&tmp.path().join("a.txt"));
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        // Cannot move the root into itself or a descendant.
+        let (moved, errors) = tree.move_paths(&[tmp.path().to_path_buf()], &dest);
+        assert_eq!(moved, 0);
+        assert_eq!(errors.len(), 1);
+        // Cannot move a directory into its own descendant.
+        let (moved, errors) = tree.move_paths(&[dest.clone()], &dest.join("inner"));
+        assert_eq!(moved, 0);
+        assert_eq!(errors.len(), 1);
     }
 }

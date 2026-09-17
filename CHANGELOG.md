@@ -32,6 +32,14 @@ Breaking changes:
 
 Features:
 
+* The file tree supports batch deletion: `Space` toggles path-based marks,
+  `Alt-Space` clears them, and `d` / `Delete` confirms deletion of the marked
+  entries (or the cursor entry when no marks exist). Marks survive navigation,
+  filtering, and refresh; failed deletions remain marked.
+* The file tree can move marked entries (or the cursor entry) to a directory:
+  `m` opens a destination bar prefilled with the parent, relative destinations
+  resolve against the tree root, and `Enter` moves the marked files and
+  directories there, reparenting them and their loaded descendants in the tree.
 * The file tree tracks the disk: expanded directories are re-read
   automatically (throttled, and on entering the filter), so files created or
   removed by other processes show up without a manual refresh.

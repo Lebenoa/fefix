@@ -1240,6 +1240,119 @@ async fn tree_deletes_selected_directory_recursively() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn tree_deletes_nonadjacent_marked_files() -> anyhow::Result<()> {
+    let dir = tempdir()?;
+    std::fs::write(dir.path().join("a.txt"), "a")?;
+    std::fs::write(dir.path().join("b.txt"), "b")?;
+    std::fs::write(dir.path().join("c.txt"), "c")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            // Mark a.txt and c.txt, leaving the cursor on unmarked b.txt.
+            (Some("j<space>jj<space>k"), None),
+            (
+                Some("d"),
+                Some(&|_: &Application| {
+                    assert!(dir.path().join("a.txt").exists());
+                    assert!(dir.path().join("b.txt").exists());
+                    assert!(dir.path().join("c.txt").exists());
+                }),
+            ),
+            (
+                Some("<del>"),
+                Some(&|_: &Application| {
+                    assert!(!dir.path().join("a.txt").exists());
+                    assert!(dir.path().join("b.txt").exists());
+                    assert!(!dir.path().join("c.txt").exists());
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tree_cancelled_batch_clear_marks_deletes_cursor_only() -> anyhow::Result<()> {
+    let dir = tempdir()?;
+    std::fs::write(dir.path().join("a.txt"), "a")?;
+    std::fs::write(dir.path().join("b.txt"), "b")?;
+    std::fs::write(dir.path().join("c.txt"), "c")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            (Some("j<space>jj<space>"), None),
+            (
+                // Moving to b.txt cancels the batch confirmation.
+                Some("dkd"),
+                Some(&|_: &Application| {
+                    assert!(dir.path().join("a.txt").exists());
+                    assert!(dir.path().join("b.txt").exists());
+                    assert!(dir.path().join("c.txt").exists());
+                }),
+            ),
+            (
+                // Cancel again, then clear the marks before deleting b.txt.
+                Some("<esc><A-space><del><del>"),
+                Some(&|_: &Application| {
+                    assert!(dir.path().join("a.txt").exists());
+                    assert!(!dir.path().join("b.txt").exists());
+                    assert!(dir.path().join("c.txt").exists());
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tree_deletes_marked_descendant_after_collapsing_parent() -> anyhow::Result<()> {
+    let dir = tempdir()?;
+    std::fs::create_dir(dir.path().join("sub"))?;
+    std::fs::write(dir.path().join("sub/a.txt"), "a")?;
+    std::fs::write(dir.path().join("sub/b.txt"), "b")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            // Expand sub, mark a.txt, then collapse sub with the cursor on it.
+            (Some("jlj<space>hh"), None),
+            (
+                Some("dd"),
+                Some(&|_: &Application| {
+                    assert!(dir.path().join("sub").is_dir());
+                    assert!(!dir.path().join("sub/a.txt").exists());
+                    assert!(dir.path().join("sub/b.txt").exists());
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn tree_renames_selected_file() -> anyhow::Result<()> {
     // `r` opens an inline rename bar prefilled with the name; typing a new
     // name and pressing `Enter` renames the entry on disk.
@@ -1299,6 +1412,43 @@ async fn tree_renames_selected_directory() -> anyhow::Result<()> {
                         std::fs::read_to_string(renamed.join("inner.txt")).unwrap(),
                         "i"
                     );
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tree_moves_marked_file_into_directory() -> anyhow::Result<()> {
+    // `m` opens a destination bar prefilled with the selected entry's parent;
+    // appending the destination and pressing `Enter` moves the marked entry
+    // (a.txt) into it, keeping unmarked files in place.
+    let dir = tempdir()?;
+    std::fs::write(dir.path().join("a.txt"), "a")?;
+    std::fs::write(dir.path().join("b.txt"), "b")?;
+    std::fs::create_dir(dir.path().join("sub"))?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            // Mark a.txt (after the sub directory, which sorts first), leave
+            // b.txt unmarked, then move into the sub directory (the bar is
+            // prefilled with a.txt's parent, so append `/sub`).
+            (Some("jj "), None),
+            (
+                Some("m/sub<ret>"),
+                Some(&|_: &Application| {
+                    assert!(!dir.path().join("a.txt").exists());
+                    assert!(dir.path().join("sub/a.txt").exists());
+                    assert!(dir.path().join("b.txt").exists());
                 }),
             ),
         ],
