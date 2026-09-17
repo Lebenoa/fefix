@@ -1404,7 +1404,8 @@ impl Component for FileTree {
         // A deletion is armed after the first `d`: a second `d`/`Delete` on the
         // same entry confirms it, `Esc`/`Ctrl-c` cancels it, and any other key
         // cancels the arming and runs normally below (e.g. moving the
-        // selection).
+        // selection). Whatever the cancelling key is, the prompt's status line
+        // is dismissed so the confirmation visibly goes away.
         if let Some(paths) = self.pending_delete.take() {
             match key_event {
                 key!('d') | key!(Delete) if paths == self.tree.deletion_targets() => {
@@ -1415,7 +1416,12 @@ impl Component for FileTree {
                     ctx.editor.set_status("Deletion cancelled");
                     return EventResult::Consumed(None);
                 }
-                _ => {}
+                // Any other key — including movement keys like `j`/`k` — cancels
+                // the prompt as well: dismiss its status line, then let the key
+                // act normally below (e.g. `j` moves the selection).
+                _ => {
+                    ctx.editor.set_status("Deletion cancelled");
+                }
             }
         }
 
