@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-b62ddd71.js";
+            window.path_to_searchindex_js = "searchindex-e758f0af.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e3ed18d8.js"></script>
@@ -778,9 +778,12 @@ descendants deletes that directory only once. The root cannot be marked or
 deleted. Successful deletions clear their marks; failures are reported and stay
 marked. With no marks, deletion still acts on the cursor entry.</p>
 <h4 id="batch-move"><a class="header" href="#batch-move">Batch move</a></h4>
-<p><code>m</code> opens a destination bar prefilled with the cursor entry’s parent directory.
-Typing a path and pressing <code>Enter</code> moves the marked entries there (or the cursor
-entry when nothing is marked); <code>Esc</code> cancels. A relative destination is resolved
+<p><code>m</code> opens a destination bar; pressing <code>Enter</code> moves the marked entries there
+(or the cursor entry when nothing is marked); <code>Esc</code> cancels. When the cursor
+is on a directory the bar is prefilled with it, so <code>m</code> then <code>Enter</code> moves the
+entries inside that directory; otherwise it is prefilled with the cursor
+entry’s parent, and typing a path and pressing <code>Enter</code> moves into it. A
+relative destination is resolved
 against the tree root, so <code>m</code>, then a bare directory name like <code>sub</code>, moves the
 marked items into <code>&lt;root&gt;/sub</code>. Moved marks follow their entries, and moved
 directories carry their loaded descendants. The root cannot be moved into itself
