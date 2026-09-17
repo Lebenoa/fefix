@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-620cc51f.js";
+            window.path_to_searchindex_js = "searchindex-e758f0af.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e3ed18d8.js"></script>
@@ -440,14 +440,13 @@ not visible in the fefix file picker and global search.</p>
 <tr><td><code>git-global</code></td><td>Enables reading global <code>.gitignore</code>, whose path is specified in git’s config: <code>core.excludesfile</code> option</td><td><code>false</code></td></tr>
 <tr><td><code>git-exclude</code></td><td>Enables reading <code>.git/info/exclude</code> files</td><td><code>false</code></td></tr>
 <tr><td><code>flatten-dirs</code></td><td>Enables flattening single child directories</td><td><code>true</code></td></tr>
-<tr><td><code>mode</code></td><td>How the file explorer commands present files: <code>"picker"</code> (the default) opens the modal picker that lists one directory at a time, <code>"tree"</code> opens the persistent file tree window instead. In <code>"tree"</code> mode the window uses the <code>[editor.file-tree]</code> settings (ignore behaviour, width, icons) and <code>flatten-dirs</code> is ignored</td><td><code>"picker"</code></td></tr>
 </tbody>
 </table>
 </div>
 <p>Example</p>
-<pre><code class="language-toml">[editor.file-explorer]
+<pre><code class="language-toml">[editor.file-tree]
 # Open the file tree window from the file explorer keys (`&lt;space&gt;e`, `&lt;space&gt;.`).
-mode = "tree"
+enable = true
 </code></pre>
 <h3 id="editorfile-tree-section"><a class="header" href="#editorfile-tree-section"><code>[editor.file-tree]</code> Section</a></h3>
 <p>Configure the file tree sidebar (see the <code>file_tree</code> command). Like the file explorer, it uses the <code>ignore</code> crate, but unlike the file explorer its defaults hide hidden files and honor ignore files, similar to the file picker, so that the tree stays focused on project files.</p>
@@ -457,6 +456,7 @@ mode = "tree"
 <tr><th>Key</th><th>Description</th><th>Default</th></tr>
 </thead>
 <tbody>
+<tr><td><code>enable</code></td><td>Opens the persistent file tree window from the file explorer commands (<code>&lt;space&gt;e</code>, <code>&lt;space&gt;.</code>) instead of the modal picker, and shows a directory passed on the command line (<code>ffx .</code>) in the tree</td><td><code>false</code></td></tr>
 <tr><td><code>hidden</code></td><td>Enables ignoring hidden files</td><td><code>true</code></td></tr>
 <tr><td><code>follow-symlinks</code></td><td>Follow symlinks instead of ignoring them</td><td><code>false</code></td></tr>
 <tr><td><code>parents</code></td><td>Enables reading ignore files from parent directories</td><td><code>true</code></td></tr>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-620cc51f.js";
+            window.path_to_searchindex_js = "searchindex-e758f0af.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e3ed18d8.js"></script>
@@ -212,6 +212,63 @@ You can reload the config file by issuing the <code>:config-reload</code> comman
 signal to the fefix process, such as by using the command <code>pkill -USR1 ffx</code>.</p>
 <p>Finally, you can have a <code>config.toml</code> and a <code>languages.toml</code> local to a project by putting it under a <code>.fefix</code> directory in your repository.
 Its settings will be merged with the configuration directory and the built-in configuration.</p>
+<h2 id="additional-properties-over-upstream-helix"><a class="header" href="#additional-properties-over-upstream-helix">Additional properties over upstream Helix</a></h2>
+<p>fefix extends the upstream Helix <code>[editor]</code> configuration with two properties
+that do not exist in upstream. Every other key matches upstream Helix exactly.</p>
+<h3 id="editor-auto-reload"><a class="header" href="#editor-auto-reload"><code>[editor] auto-reload</code></a></h3>
+<p><code>auto-reload</code> (<code>bool</code>, default <code>true</code>) — Reload buffers from disk
+automatically when their file changes externally. Buffers with unsaved changes
+are never touched and are left open, so your edits are never silently lost.</p>
+<pre><code class="language-toml">[editor]
+auto-reload = false # disable automatic reload on external file change
+</code></pre>
+<p>This is an fefix-only key (commit <code>d212cd03</code>). Upstream Helix has no
+equivalent; it requires a manual reload.</p>
+<h3 id="editorfile-tree"><a class="header" href="#editorfile-tree"><code>[editor.file-tree]</code></a></h3>
+<p>The file tree is an fefix extension of the file explorer. Upstream Helix
+ships only the modal explorer; fefix adds an <code>[editor.file-tree]</code> section
+that turns the file explorer commands (<code>&lt;space&gt;e</code>, <code>&lt;space&gt;.</code>) into the
+persistent file-tree window and shows a directory passed on the command line
+there instead of a modal picker.</p>
+<pre><code class="language-toml">[editor.file-tree]
+enable = false           # false (default) | true
+hidden = true            # hide hidden files (dotfiles)
+follow-symlinks = false  # follow directory symlinks
+parents = true           # read upsearch .ignore / .gitignore from parent dirs
+ignore = true            # read .ignore files
+git-ignore = true        # read .gitignore files
+git-global = true        # read the global gitignore (core.excludesFile)
+git-exclude = true       # read .git/info/exclude
+width = 30               # preferred content width in columns
+icons = "auto"           # "auto" | "nerdfont" | "ascii"
+# Override Nerd Font glyphs for well-known folder names (e.g. "src"):
+folder-icons = {}
+</code></pre>
+<ul>
+<li><code>enable</code> — When <code>true</code>, the file explorer commands (<code>&lt;space&gt;e</code>, …) open
+the persistent file-tree window docked to the left of the editor instead of
+the modal picker, and opening a directory as the first argument (<code>ffx .</code>)
+shows it in the tree. The window expands directories in place, reads the
+<code>[editor.file-tree]</code> settings below (ignore behaviour, width, icons) and can
+be resized by dragging the separator with the mouse. Defaults to <code>false</code>
+(the modal picker); the standalone <code>file_tree</code> command (<code>&lt;space&gt;t</code>,
+<code>&lt;space&gt;T</code>) is always available regardless of this setting.</li>
+<li><code>width</code> — Preferred width of the file-tree content in columns (the separator
+column excluded). Can be adjusted per session by dragging the separator with
+the mouse. <code>0</code> falls back to this value for the session width. Defaults to
+<code>30</code>.</li>
+<li><code>icons</code> — Whether to show VS Code / Zed style folder and file icons. Icons
+use Nerd Font glyphs and require a Nerd Font (v3 or later) in the terminal.
+<code>"auto"</code> (the default) enables icons when the terminal is likely to support
+Nerd Fonts, <code>"nerdfont"</code> always renders them, and <code>"ascii"</code> falls back to
+ASCII expand/collapse arrows.</li>
+<li><code>folder-icons</code> — Custom Nerd Font glyphs for well-known folder names,
+overriding the built-in icons (<code>src</code>, <code>assets</code>, <code>scripts</code>, <code>node_modules</code>,
+…). Keys are folder names and values the glyph to render for them, written
+either as the glyph itself or as a <code>\UXXXXXXXX</code> escape, e.g.
+<code>folder-icons = { src = "\U000F107F" }</code>. Folders without an entry keep their
+built-in icon (or the generic folder glyph).</li>
+</ul>
 
                     </main>
 
