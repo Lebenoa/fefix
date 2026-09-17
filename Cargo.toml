@@ -20,7 +20,7 @@ members = [
 default-members = ["helix-term"]
 
 [workspace.package]
-version = "26.9.1"
+version = "26.9.2"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2024"
 rust-version = "1.90"

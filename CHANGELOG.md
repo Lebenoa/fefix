@@ -24,6 +24,10 @@ Packaging:
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix).
 
+# 26.09.2 (2026-09-17)
+
+fefix is a fork of [Helix](https://github.com/helix-editor/helix). This release turns the file explorer into a persistent file tree window with batch delete and move, and migrates the workspace to Rust edition 2024.
+
 Breaking changes:
 
 * The `[editor.file-explorer] mode` option is removed. Enable the file tree
