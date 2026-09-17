@@ -1308,6 +1308,42 @@ async fn tree_renames_selected_directory() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn tree_picks_up_externally_created_file() -> anyhow::Result<()> {
+    use helix_view::doc;
+
+    // A file an external process creates under the tree root shows up
+    // without a manual refresh: entering the filter re-reads the expanded
+    // directories, after which the new file can be opened.
+    let dir = tempdir()?;
+    std::fs::write(dir.path().join("a.txt"), "a")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    // Simulate an external process creating a file after the tree loaded.
+    std::fs::write(dir.path().join("b.txt"), "b")?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("j<ret>"), None), // open a.txt (sanity), focus moves to editor
+            (Some("<C-w>h"), None), // focus the tree again
+            // Entering the filter re-reads the root; the filter finds the
+            // externally created b.txt and Enter opens it.
+            (
+                Some("/b<ret>"),
+                Some(&|app: &Application| {
+                    assert_eq!(doc!(app.editor).path().unwrap(), dir.path().join("b.txt"));
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
     test((
         indoc! {r"

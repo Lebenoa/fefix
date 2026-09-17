@@ -36,6 +36,11 @@ use crate::{
     ctrl, key, shift,
 };
 
+/// The interval at which the expanded directories are re-read from disk
+/// while the tree is visible, so externally created or removed files show up
+/// without a manual `R` refresh.
+const AUTO_REFRESH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(2);
+
 pub const ID: &str = "file-tree";
 
 const ARROW_EXPANDED: &str = "▾";
@@ -316,6 +321,50 @@ impl Tree {
         }
     }
 
+    /// Re-read the children of every expanded directory, so files created or
+    /// removed outside the editor show up without a manual refresh. Entries
+    /// surviving under the same path keep their expansion state and cached
+    /// subtree; new entries are added and vanished ones dropped. Returns
+    /// whether the listing changed.
+    fn refresh_all(&mut self) -> bool {
+        fn re_read_children(directory: &mut TreeEntry, config: &FileTreeConfig) -> bool {
+            let mut old: HashMap<PathBuf, TreeEntry> = directory
+                .children
+                .drain(..)
+                .map(|entry| (entry.path.clone(), entry))
+                .collect();
+            let fresh = read_children(&directory.path, config);
+            let mut changed = false;
+            let mut merged = Vec::with_capacity(fresh.len());
+            for new in fresh {
+                if let Some(survivor) = old.remove(&new.path) {
+                    merged.push(survivor);
+                } else {
+                    changed = true;
+                    merged.push(new);
+                }
+            }
+            changed |= !old.is_empty(); // deleted entries
+            directory.children = merged;
+            changed
+        }
+
+        fn rec(entries: &mut [TreeEntry], config: &FileTreeConfig) -> bool {
+            let mut changed = false;
+            for entry in entries.iter_mut() {
+                if entry.is_dir && entry.expanded {
+                    changed |= re_read_children(entry, config);
+                }
+                if entry.is_dir {
+                    changed |= rec(&mut entry.children, config);
+                }
+            }
+            changed
+        }
+
+        rec(&mut self.entries, &self.config)
+    }
+
     /// Expand all ancestor directories of `path` (which must be under the
     /// root) and select it. Used to reveal the current buffer.
     fn reveal(&mut self, path: &Path) {
@@ -543,6 +592,9 @@ pub struct FileTree {
     /// The (column, content width) pair captured when a separator drag
     /// started, or `None` when not resizing.
     resizing: Option<(u16, u16)>,
+    /// When the expanded directories were last re-read from disk, so
+    /// [`FileTree::auto_refresh`] only does it every [`AUTO_REFRESH_INTERVAL`].
+    last_auto_refresh: std::time::Instant,
     /// The widest content the window may grow to: the terminal width minus the
     /// columns reserved for the separator and the editor. Refreshed on render.
     max_width: u16,
@@ -573,8 +625,21 @@ impl FileTree {
             renaming: false,
             rename_input: String::new(),
             resizing: None,
+            last_auto_refresh: std::time::Instant::now(),
             max_width: 0,
         }
+    }
+
+    /// Re-read the expanded directories from disk as long as the previous
+    /// re-read is older than [`AUTO_REFRESH_INTERVAL`]. Returns whether the
+    /// listing actually changed.
+    fn auto_refresh(&mut self) -> bool {
+        let now = std::time::Instant::now();
+        if now.duration_since(self.last_auto_refresh) < AUTO_REFRESH_INTERVAL {
+            return false;
+        }
+        self.last_auto_refresh = now;
+        self.tree.refresh_all()
     }
 
     /// The entries currently on display: narrowed to the filter query when a
@@ -632,7 +697,17 @@ impl FileTree {
     /// Open the selected entry: expand it if it is a directory, otherwise open
     /// the file and hand focus back to the editor. The window stays open.
     fn open_selected(&mut self, ctx: &mut Context, action: Action) -> EventResult {
-        let Some(path) = self.tree.selected_path() else {
+        // While a filter is active, the entry to open is the one under the
+        // selection in the narrowed listing (the raw selection may be filtered
+        // out entirely), falling back to the first match.
+        let path = if self.filtering {
+            let visible = self.visible_entries();
+            let index = self.tree.selected_index(&visible);
+            visible.get(index).map(|(entry, _)| entry.path.clone())
+        } else {
+            self.tree.selected_path()
+        };
+        let Some(path) = path else {
             return EventResult::Consumed(None);
         };
         if path.is_dir() {
@@ -1145,7 +1220,11 @@ impl Component for FileTree {
                 ctx.editor.autoinfo = Some(keymap_info());
             }
             key!('/') => {
-                // Start filtering the tree to matching paths.
+                // Start filtering the tree to matching paths. Re-read the
+                // expanded directories first so newly created files appear in
+                // the results.
+                self.tree.refresh_all();
+                self.last_auto_refresh = std::time::Instant::now();
                 self.filtering = true;
             }
             key!(Up) | key!('k') | ctrl!('p') => {
@@ -1232,6 +1311,11 @@ impl Component for FileTree {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, ctx: &mut Context) {
+        // Pick up files created or removed outside the editor: re-read the
+        // expanded directories at most every AUTO_REFRESH_INTERVAL, so the
+        // listing drawn below matches the disk.
+        self.auto_refresh();
+
         let theme = &ctx.editor.theme;
         let background = theme.get("ui.background");
         let directory_style = theme.get("ui.text.directory");
@@ -1446,6 +1530,43 @@ mod tests {
                     .replace('\\', "/")
             })
             .collect()
+    }
+
+    #[test]
+    fn refresh_all_picks_up_external_changes() {
+        let tmp = TempDir::new("autorefresh");
+        write_file(&tmp.path().join("a.txt"));
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        assert_eq!(visible_paths(&tree), vec!["", "a.txt"]);
+        assert!(!tree.refresh_all()); // nothing changed externally yet
+
+        // A file created outside the editor shows up on the next refresh.
+        write_file(&tmp.path().join("b.txt"));
+        assert!(tree.refresh_all());
+        assert_eq!(visible_paths(&tree), vec!["", "a.txt", "b.txt"]);
+
+        // A file removed outside the editor disappears again.
+        std::fs::remove_file(tmp.path().join("a.txt")).unwrap();
+        assert!(tree.refresh_all());
+        assert_eq!(visible_paths(&tree), vec!["", "b.txt"]);
+        assert!(!tree.refresh_all());
+    }
+
+    #[test]
+    fn refresh_all_keeps_expansion_state_and_sees_inside() {
+        let tmp = TempDir::new("autorefresh-expand");
+        write_file(&tmp.path().join("d/s.txt"));
+        let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
+        let d = tmp.path().join("d");
+        tree.expand(&d);
+        assert_eq!(visible_paths(&tree), vec!["", "d", "d/s.txt"]);
+
+        // A new file inside the expanded directory is noticed, and the
+        // surviving entries keep their expanded state and cached children.
+        write_file(&tmp.path().join("d/t.txt"));
+        assert!(tree.refresh_all());
+        assert_eq!(visible_paths(&tree), vec!["", "d", "d/s.txt", "d/t.txt"]);
+        assert!(!tree.refresh_all());
     }
 
     #[test]

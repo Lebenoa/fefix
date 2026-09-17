@@ -32,6 +32,11 @@ Breaking changes:
 
 Features:
 
+* The file tree tracks the disk: expanded directories are re-read
+  automatically (throttled, and on entering the filter), so files created or
+  removed by other processes show up without a manual refresh.
+* Opening a filtered file from the tree (`/` then `Enter`) opens the visible
+  match instead of a selection the filter hid.
 * The file tree can rename the selected file or directory: `r` opens an
   inline bar prefilled with the name (`Enter` confirms, `Esc` cancels);
   directory contents and tree paths are rewritten in place. Refresh moves to
