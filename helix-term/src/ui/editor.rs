@@ -1616,6 +1616,11 @@ impl Component for EditorView {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        // The which-key / autoinfo popup anchors to the full screen, not to
+        // the dock-narrowed editor viewport below, so it stays in the same
+        // place whether or not the file tree is open.
+        let viewport = area;
+
         // When the file tree window is open, lay the editor out to its right
         // rather than underneath it. The file tree layer paints the docked
         // region itself.
@@ -1657,7 +1662,7 @@ impl Component for EditorView {
 
         if config.auto_info {
             if let Some(mut info) = cx.editor.autoinfo.take() {
-                info.render(area, surface, cx);
+                info.render(viewport, surface, cx);
                 cx.editor.autoinfo = Some(info)
             }
         }
