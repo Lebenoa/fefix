@@ -1458,6 +1458,44 @@ async fn tree_moves_marked_file_into_directory() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn tree_moves_marked_files_into_selected_directory() -> anyhow::Result<()> {
+    // With the cursor on a directory, `m` prefills the destination bar with
+    // it: `Enter` moves the marked entries inside that directory.
+    let dir = tempdir()?;
+    std::fs::write(dir.path().join("a.txt"), "a")?;
+    std::fs::write(dir.path().join("b.txt"), "b")?;
+    std::fs::create_dir(dir.path().join("sub"))?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            // Mark a.txt and b.txt (sub sorts first), then put the cursor
+            // back on the sub directory.
+            (Some("jj "), None),
+            (Some("j "), None),
+            (Some("kk"), None),
+            (
+                Some("m<ret>"),
+                Some(&|_: &Application| {
+                    assert!(!dir.path().join("a.txt").exists());
+                    assert!(!dir.path().join("b.txt").exists());
+                    assert!(dir.path().join("sub/a.txt").exists());
+                    assert!(dir.path().join("sub/b.txt").exists());
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn tree_picks_up_externally_created_file() -> anyhow::Result<()> {
     use helix_view::doc;
 

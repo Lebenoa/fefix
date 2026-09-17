@@ -37,9 +37,12 @@ marked. With no marks, deletion still acts on the cursor entry.
 
 #### Batch move
 
-`m` opens a destination bar prefilled with the cursor entry's parent directory.
-Typing a path and pressing `Enter` moves the marked entries there (or the cursor
-entry when nothing is marked); `Esc` cancels. A relative destination is resolved
+`m` opens a destination bar; pressing `Enter` moves the marked entries there
+(or the cursor entry when nothing is marked); `Esc` cancels. When the cursor
+is on a directory the bar is prefilled with it, so `m` then `Enter` moves the
+entries inside that directory; otherwise it is prefilled with the cursor
+entry's parent, and typing a path and pressing `Enter` moves into it. A
+relative destination is resolved
 against the tree root, so `m`, then a bare directory name like `sub`, moves the
 marked items into `<root>/sub`. Moved marks follow their entries, and moved
 directories carry their loaded descendants. The root cannot be moved into itself

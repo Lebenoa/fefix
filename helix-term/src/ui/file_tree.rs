@@ -23,11 +23,11 @@ use std::{
 };
 
 use helix_view::{
+    Editor,
     editor::{Action, FileTreeConfig},
     graphics::{CursorKind, Rect},
     info::Info,
     input::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
-    Editor,
 };
 use tui::buffer::Buffer as Surface;
 
@@ -465,6 +465,11 @@ impl Tree {
     fn selected_is_expanded_dir(&self) -> bool {
         Self::find(&self.entries, &self.selected)
             .is_some_and(|entry| entry.is_dir && entry.expanded)
+    }
+
+    /// Whether the selected entry is a directory.
+    fn selected_is_dir(&self) -> bool {
+        Self::find(&self.entries, &self.selected).is_some_and(|entry| entry.is_dir)
     }
 
     /// Remove the entry at `path` (and its loaded subtree) from the tree.
@@ -1020,14 +1025,20 @@ impl FileTree {
     }
 
     /// Open a destination bar for moving the marked entry (or the cursor
-    /// entry when nothing is marked), prefilled with the selected entry's
-    /// parent directory so the user edits the destination.
+    /// entry when nothing is marked). When the selection is a directory it is
+    /// prefilled as the destination itself, so `Enter` moves the entries
+    /// inside it; otherwise the selected entry's parent is prefilled and the
+    /// user edits the destination.
     fn start_move(&mut self) {
         let selected = self.tree.selected.clone();
-        let prefix = selected
-            .parent()
-            .map(|parent| parent.display().to_string())
-            .unwrap_or_else(|| self.tree.root.display().to_string());
+        let prefix = if self.tree.selected_is_dir() {
+            selected.display().to_string()
+        } else {
+            selected
+                .parent()
+                .map(|parent| parent.display().to_string())
+                .unwrap_or_else(|| self.tree.root.display().to_string())
+        };
         self.move_input = prefix;
         self.moving = true;
     }
@@ -1943,9 +1954,11 @@ mod tests {
 
         let visible = tree.visible();
         // The root entry is depth 0, so `x/y/f.rs` is at depth 3.
-        assert!(visible
-            .iter()
-            .any(|(entry, depth)| { entry.path == file && *depth == 3 }));
+        assert!(
+            visible
+                .iter()
+                .any(|(entry, depth)| { entry.path == file && *depth == 3 })
+        );
         assert_eq!(tree.selected, file);
         assert_eq!(tree.selected_index(&visible), visible.len() - 1);
     }
