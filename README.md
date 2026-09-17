@@ -142,4 +142,5 @@ Discuss the editor on the upstream community [Matrix Space](https://matrix.to/#/
 
 # Credits
 
-Thanks to [@jakenvac](https://github.com/jakenvac) for designing the logo!
+All source code is licensed under the [MPL-2.0](./LICENSE). The fefix
+wordmark is an original "F/" mark.
