@@ -1129,6 +1129,117 @@ async fn window_commands_move_focus_between_tree_and_editor() -> anyhow::Result<
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn tree_deletes_selected_file() -> anyhow::Result<()> {
+    // `d` / `Delete` deletes the selected entry, but only after a second
+    // press confirms it.
+    let dir = tempdir()?;
+    std::fs::write(dir.path().join("a.txt"), "a")?;
+    std::fs::write(dir.path().join("b.txt"), "b")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            (Some("j"), None),
+            (
+                // One press only arms the deletion: nothing is deleted yet.
+                Some("d"),
+                Some(&|_: &Application| {
+                    assert!(dir.path().join("a.txt").exists());
+                }),
+            ),
+            (
+                Some("d"),
+                Some(&|_: &Application| {
+                    assert!(!dir.path().join("a.txt").exists());
+                    assert!(dir.path().join("b.txt").exists());
+                }),
+            ),
+            (
+                Some("dd"),
+                Some(&|app: &Application| {
+                    assert!(!dir.path().join("b.txt").exists());
+                    assert!(app.editor.file_tree_window.open);
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tree_delete_is_cancelled_by_moving_selection() -> anyhow::Result<()> {
+    // Arming the deletion and then moving the selection cancels it: the
+    // follow-up `d` arms the new entry instead of deleting.
+    let dir = tempdir()?;
+    std::fs::write(dir.path().join("a.txt"), "a")?;
+    std::fs::write(dir.path().join("b.txt"), "b")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            (Some("jdj"), None),
+            (
+                Some("d"),
+                Some(&|_: &Application| {
+                    assert!(dir.path().join("a.txt").exists());
+                    assert!(dir.path().join("b.txt").exists());
+                }),
+            ),
+            (
+                Some("d"),
+                Some(&|_: &Application| {
+                    // The second `d` confirmed the deletion of b.txt.
+                    assert!(dir.path().join("a.txt").exists());
+                    assert!(!dir.path().join("b.txt").exists());
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tree_deletes_selected_directory_recursively() -> anyhow::Result<()> {
+    // `dd` on a directory removes it and everything below it.
+    let dir = tempdir()?;
+    std::fs::create_dir(dir.path().join("sub"))?;
+    std::fs::write(dir.path().join("sub/inner.txt"), "i")?;
+    let mut config = test_config();
+    config.editor.file_tree.enable = true;
+    let mut app = AppBuilder::new()
+        .with_file(dir.path().to_path_buf(), Some(Default::default()))
+        .with_config(config)
+        .build()?;
+    test_key_sequences(
+        &mut app,
+        vec![
+            (Some("<space>e"), None),
+            (Some("j"), None),
+            (
+                Some("dd"),
+                Some(&|_: &Application| assert!(!dir.path().join("sub").exists())),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
     test((
         indoc! {r"

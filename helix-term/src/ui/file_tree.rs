@@ -414,6 +414,25 @@ impl Tree {
         Self::find(&self.entries, &self.selected)
             .is_some_and(|entry| entry.is_dir && entry.expanded)
     }
+
+    /// Remove the entry at `path` (and its loaded subtree) from the tree.
+    /// Returns whether the entry was found. The root cannot be removed.
+    fn remove(&mut self, path: &Path) -> bool {
+        fn remove_rec(entries: &mut Vec<TreeEntry>, path: &Path) -> bool {
+            if let Some(index) = entries.iter().position(|entry| entry.path == path) {
+                entries.remove(index);
+                return true;
+            }
+            entries
+                .iter_mut()
+                .any(|entry| remove_rec(&mut entry.children, path))
+        }
+
+        if path == self.root {
+            return false;
+        }
+        remove_rec(&mut self.entries, path)
+    }
 }
 
 fn flatten<'a>(entries: &'a [TreeEntry], depth: usize, out: &mut Vec<(&'a TreeEntry, usize)>) {
@@ -497,6 +516,10 @@ pub struct FileTree {
     /// The current filter query (see [`FileTree::filtering`]). Empty when no
     /// filter is active.
     filter: String,
+    /// The entry waiting for a second `d` / `Delete` press to confirm its
+    /// deletion, or `None` when no deletion is armed. Any other key (or
+    /// moving the selection) cancels the arming.
+    pending_delete: Option<PathBuf>,
     /// The (column, content width) pair captured when a separator drag
     /// started, or `None` when not resizing.
     resizing: Option<(u16, u16)>,
@@ -526,6 +549,7 @@ impl FileTree {
             window_prefix: false,
             show_keymap: false,
             filter: String::new(),
+            pending_delete: None,
             resizing: None,
             max_width: 0,
         }
@@ -610,15 +634,61 @@ impl FileTree {
         EventResult::Consumed(None)
     }
 
+    /// Permanently delete the selected file or directory (`d`, `Delete`).
+    /// The selection moves to the entry that took its place, or to the
+    /// parent directory when nothing remains.
+    fn delete_selected(&mut self, ctx: &mut Context) {
+        let selected = self.tree.selected.clone();
+        if selected == self.tree.root {
+            ctx.editor
+                .set_error("Cannot delete the tree root directory");
+            return;
+        }
+        let visible = self.tree.visible();
+        let index = self.tree.selected_index(&visible);
+        let Some(is_dir) = visible.get(index).map(|(entry, _)| entry.is_dir) else {
+            return;
+        };
+        drop(visible);
+        let result = if is_dir {
+            std::fs::remove_dir_all(&selected)
+        } else {
+            std::fs::remove_file(&selected)
+        };
+        match result {
+            Ok(()) => {
+                forget_expanded(&self.tree.root, &selected);
+                self.tree.remove(&selected);
+                // The entry at the same index (clamped) follows, so the
+                // selection lands on its replacement rather than jumping to
+                // the beginning of the tree.
+                let visible = self.tree.visible();
+                let index = index.min(visible.len().saturating_sub(1));
+                let next = visible.get(index).map(|(entry, _)| entry.path.clone());
+                drop(visible);
+                if let Some(path) = next {
+                    self.tree.select(&path);
+                }
+                ctx.editor
+                    .set_status(format!("Deleted {}", selected.display()));
+            }
+            Err(err) => {
+                ctx.editor
+                    .set_error(format!("Failed to delete {}: {err}", selected.display()));
+            }
+        }
+    }
+
     fn handle_mouse(&mut self, event: &MouseEvent, ctx: &mut Context) -> EventResult {
         let MouseEvent {
             kind, row, column, ..
         } = *event;
-        // Any click closes the keymap modal; the click itself is then
-        // handled normally below.
+        // Any click closes the keymap modal and cancels a pending deletion;
+        // the click itself is then handled normally below.
         if self.show_keymap && matches!(kind, MouseEventKind::Down(_)) {
             self.show_keymap = false;
         }
+        self.pending_delete = None;
         let area = self.area;
         // The separator column doubles as the resize handle. Only events over
         // the tree's own columns belong to the tree; anything else falls
@@ -910,6 +980,25 @@ impl Component for FileTree {
             }
         }
 
+        // A deletion is armed after the first `d`: a second `d`/`Delete` on the
+        // same entry confirms it, `Esc`/`Ctrl-c` cancels it, and any other key
+        // cancels the arming and runs normally below (e.g. moving the
+        // selection).
+        if let Some(path) = self.pending_delete.clone() {
+            self.pending_delete = None;
+            match key_event {
+                key!('d') | key!(Delete) if path == self.tree.selected => {
+                    self.delete_selected(ctx);
+                    return EventResult::Consumed(None);
+                }
+                key!(Esc) | ctrl!('c') => {
+                    ctx.editor.set_status("Deletion cancelled");
+                    return EventResult::Consumed(None);
+                }
+                _ => {}
+            }
+        }
+
         match key_event {
             ctrl!('w') => {
                 // Start the window prefix (see above).
@@ -993,6 +1082,26 @@ impl Component for FileTree {
             }
             key!('r') => {
                 self.tree.refresh(&self.tree.selected.clone());
+            }
+            key!('d') | key!(Delete) => {
+                // First press arms the deletion; a second press on the same
+                // entry confirms it (see the pending-delete block above).
+                let selected = self.tree.selected.clone();
+                if selected == self.tree.root {
+                    ctx.editor
+                        .set_error("Cannot delete the tree root directory");
+                } else {
+                    self.pending_delete = Some(selected.clone());
+                    ctx.editor.set_status(format!(
+                        "Press {} again to delete {}",
+                        if key_event.code == KeyCode::Delete {
+                            "Delete"
+                        } else {
+                            "d"
+                        },
+                        selected.display()
+                    ));
+                }
             }
             _ => {}
         }
@@ -1133,6 +1242,7 @@ fn keymap_info() -> Info {
         ("Enter", "open file or toggle directory"),
         ("/", "filter the tree"),
         ("r", "refresh selected directory"),
+        ("d / Del", "delete file/dir (again to confirm)"),
         ("q", "close the tree"),
         ("Esc", "hand focus back to the editor"),
         ("C-w w", "focus next window (editor)"),

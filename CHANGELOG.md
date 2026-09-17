@@ -32,6 +32,9 @@ Breaking changes:
 
 Features:
 
+* The file tree can delete the selected entry: `d` (or `Delete`) removes the
+  file or directory (recursively) and moves the selection to its replacement.
+  A second press confirms the deletion; any other key cancels it.
 * The file tree is part of the window navigation: `C-w w` / `Space-w w`
   rotates it into the window cycle, `C-w h` / `Space-w h` jumps to it as the
   leftmost window, and `C-w l` (or `C-w w`) from the tree returns to the
