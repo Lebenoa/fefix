@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-e758f0af.js";
+            window.path_to_searchindex_js = "searchindex-b2c5a49b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e3ed18d8.js"></script>
@@ -220,10 +220,9 @@ cd fefix
 <pre><code class="language-sh"># Reproducible
 cargo install --path fefix-term --locked
 </code></pre>
-<pre><code class="language-sh"># Optimized
+<pre><code class="language-sh"># Optimized for this CPU (not portable to other CPUs)
 cargo install \
-   --profile opt \
-   --config 'build.rustflags=["-C", "target-cpu=native"]' \
+   --profile native \
    --path fefix-term \
    --locked
 </code></pre>
