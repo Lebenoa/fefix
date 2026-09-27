@@ -39,10 +39,9 @@ RUSTFLAGS="-C target-feature=-crt-static"
    cargo install --path fefix-term --locked
    ```
    ```sh
-   # Optimized
+   # Optimized for this CPU (not portable to other CPUs)
    cargo install \
-      --profile opt \
-      --config 'build.rustflags=["-C", "target-cpu=native"]' \
+      --profile native \
       --path fefix-term \
       --locked
    ```

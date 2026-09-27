@@ -24,6 +24,26 @@ Packaging:
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix).
 
+# 26.09.3 (2026-09-27)
+
+This release makes the focused file-tree row visible across the full tree
+width, adds a CPU-native build profile, and improves YAML newline indentation.
+
+Usability improvements:
+
+* The focused file-tree item uses the high-contrast menu selection style
+  across the full tree width.
+
+Fixes:
+
+* Inserting a newline after a YAML sequence mapping preserves its nesting
+  and the following sibling.
+
+Builds:
+
+* `cargo build --profile native` enables CPU-specific instructions; release
+  binaries remain portable.
+
 # 26.09.2 (2026-09-17)
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix). This release turns the file explorer into a persistent file tree window with batch delete and move, and migrates the workspace to Rust edition 2024.

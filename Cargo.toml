@@ -1,3 +1,5 @@
+cargo-features = ["profile-rustflags"]
+
 [workspace]
 resolver = "3"
 members = [
@@ -20,7 +22,7 @@ members = [
 default-members = ["helix-term"]
 
 [workspace.package]
-version = "26.9.2"
+version = "26.9.3"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 edition = "2024"
 rust-version = "1.90"
@@ -71,3 +73,9 @@ opt-level = 3
 strip = true
 lto = "fat"
 codegen-units = 1
+
+# Build with CPU-specific instructions for this machine.
+# Use `cargo build --profile native`; the binary is not portable to other CPUs.
+[profile.native]
+inherits = "opt"
+rustflags = ["-C", "target-cpu=native"]

@@ -10,6 +10,9 @@
 [target."cfg(all())"]
 rustflags = ["--cfg", "tokio_unstable", "-C", "target-feature=-crt-static"]
 
+# Enable the profile-specific native CPU flags declared in Cargo.toml.
+[unstable]
+profile-rustflags = true
 
 [alias]
 xtask = "run --package xtask --"

@@ -25,7 +25,7 @@ use std::{
 use helix_view::{
     Editor,
     editor::{Action, FileTreeConfig},
-    graphics::{CursorKind, Rect},
+    graphics::{CursorKind, Modifier, Rect},
     info::Info,
     input::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
 };
@@ -1637,6 +1637,7 @@ impl Component for FileTree {
         let directory_style = theme.get("ui.text.directory");
         let file_style = theme.get("ui.text");
         let selected_style = theme.get("ui.cursorline.primary");
+        let tree_selection_style = theme.get("ui.menu.selected");
         let window_style = theme.get("ui.window");
 
         let width = content_width(area, preferred_width(ctx.editor));
@@ -1746,10 +1747,16 @@ impl Component for FileTree {
             // Only the focused window highlights its selection; unfocused it
             // stays in the background like an inactive split.
             let style = if ctx.editor.file_tree_window.focused && row == selected_index {
-                base_style.patch(selected_style)
+                base_style.patch(tree_selection_style).add_modifier(Modifier::BOLD)
             } else {
                 base_style
             };
+            if ctx.editor.file_tree_window.focused && row == selected_index {
+                surface.clear_with(
+                    Rect { x: tree_area.x, y, width: tree_area.width, height: 1 },
+                    style,
+                );
+            }
             surface.set_stringn(tree_area.x, y, &line, tree_area.width as usize, style);
         }
     }

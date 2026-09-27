@@ -1469,6 +1469,35 @@ mod test {
     }
 
     #[test]
+    fn yaml_newline_after_sequence_mapping() {
+        // A newline at the end of the last line of a sequence-mapping item must
+        // indent to the next sibling item's level, not inherit the item's level
+        // plus an extra level from the (multiline) sequence item scope.
+        use crate::syntax::config::IndentationHeuristic;
+        let loader = crate::config::default_lang_loader();
+        let lang = loader.language_for_name("yaml").expect("yaml language");
+        let text = Rope::from(
+            "providers:\r\n  Lebenoa:\r\n    models:\r\n      - id: freeinference/deepseek-v4-flash\r\n        name: GPT 5.6 Luna\r\n  llama.cpp:\r\n    models:\r\n      - id: gemma-4-12B-it-QAT-GGUF\r\n        name: Gemma 4 12B IT QAT\r\n",
+        );
+        let syntax = Syntax::new(text.slice(..), lang, &loader).expect("parse");
+        // Cursor at the end of line 4 (`        name: GPT 5.6 Luna`), before the
+        // line ending (the \r of a CRLF ending), like the integration test.
+        let pos = text.line_to_char(4) + text.line(4).len_chars() - 2;
+        let indent = indent_for_newline(
+            &loader,
+            Some(&syntax),
+            &IndentationHeuristic::Hybrid,
+            &IndentStyle::Spaces(2),
+            2,
+            text.slice(..),
+            4,
+            pos,
+            4,
+        );
+        assert_eq!(indent, "  ");
+    }
+
+    #[test]
     fn test_relative_indent() {
         let indent_style = IndentStyle::Spaces(4);
         let tab_width: usize = 4;

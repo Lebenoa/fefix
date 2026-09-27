@@ -635,6 +635,42 @@ async fn test_jump_undo_redo() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_yaml_newline_after_sequence_mapping() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new(),
+        (
+            r#"providers:
+  Lebenoa:
+    models:
+      - id: freeinference/deepseek-v4-flash
+        name: GPT 5.6 Luna#[|]#
+  llama.cpp:
+    models:
+      - id: gemma-4-12B-it-QAT-GGUF
+        name: Gemma 4 12B IT QAT
+"#,
+            ":lang yaml<ret>i<ret>",
+            concat!(
+                "providers:\n",
+                "  Lebenoa:\n",
+                "    models:\n",
+                "      - id: freeinference/deepseek-v4-flash\n",
+                "        name: GPT 5.6 Luna\n",
+                "  #[|\n]#\n",
+                "  llama.cpp:\n",
+                "    models:\n",
+                "      - id: gemma-4-12B-it-QAT-GGUF\n",
+                "        name: Gemma 4 12B IT QAT\n",
+            ),
+            LineFeedHandling::Native,
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_indent_with_spaces() -> anyhow::Result<()> {
     let tests = vec![
         // at start of line
