@@ -29,11 +29,11 @@ All shortcuts/keymaps can be found [in the book](./book/src/keymap.md).
 # Differences from upstream
 
 This fork tracks [upstream Helix](https://github.com/helix-editor/helix) (currently
-based on commit `079a789e`, 2026-07-23) with the following additions:
+based on commit `1a3fdfda6`, 2026-11-20) with the following changes:
 
 - **File tree window** — a VS Code / Zed style file tree docked to the left
-  of the editor. With `[editor.file-explorer] mode = "tree"` (set `mode` to
-  `"tree"`; the default `"picker"` keeps the modal picker), `<space>e`
+  of the editor. With `[editor.file-tree] enable = true` (the default
+  `false` keeps the modal picker), `<space>e`
   toggles the tree at the workspace root and `<space>.` opens or re-roots it
   at the current buffer's directory; `ffx <dir>` (e.g. `ffx .`) opens the tree
   at that directory too. It is a persistent window, not a modal overlay:
@@ -59,6 +59,20 @@ based on commit `079a789e`, 2026-07-23) with the following additions:
   changes on disk, controlled by the new `[editor] auto-reload` option
   (default `true`). Reload is skipped for buffers with unsaved changes and
   while in insert mode.
+- **Hybrid indent fallback** — when the line above a new line has the same
+  computed tree-sitter indent level and neither line is aligned, the new line
+  takes the language's tree-sitter indent instead of copying the previous
+  line's actual leading whitespace or an older baseline. This keeps newlines
+  inside unindented multiline constructs (YAML sequence-mapping items,
+  multiline start tags) at the syntax level. The upstream `tests/indent`
+  corpus (`cargo xtask indent-check`) passes with it.
+- **Background clipboard writes** — writing to the `*`/`+` registers pushes to
+  the system clipboard on a background thread, so a slow or hung provider
+  (e.g. `termux-clipboard-set`) cannot stall the editor. Failures are reported
+  as status messages and the register keeps its contents.
+- **Renamed for the fork** — the binary is `ffx`, the workspace-local config
+  directory is `.fefix/`, and environment variables use the `FEFIX_` prefix
+  (`FEFIX_RUNTIME`, `FEFIX_LOG_LEVEL`, ...).
 
 See the [CHANGELOG](./CHANGELOG.md) for details.
 
