@@ -24,6 +24,26 @@ Packaging:
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix).
 
+Merged upstream `1a3fdfda6` (82 commits since the previous sync), bringing the
+rewritten indentation engine and its `tests/indent` corpus (`cargo xtask
+indent-check`), the `:reflow` rewrite that drops `textwrap`, a large batch of
+LSP/DAP fixes, jump history stored per revision, control-character rendering,
+whole-file encoding detection that refuses lossy saves, and reworked Nix
+packaging.
+
+Fixes:
+
+* Newline indentation now uses the tree-sitter indent when the new line and the
+  baseline line sit at the same computed level without alignment, instead of
+  falling back to an older baseline. A newline after a YAML sequence-mapping
+  item continues the item's mapping at its key column, and CRLF and LF files
+  agree.
+* Removed the `>`/`/>` outdent captures from the Svelte indent query; the
+  upstream indent scopes handle start tags, and the captures made a re-indented
+  start-tag line compute column 0.
+* The file watcher no longer calls the removed `View::sync_changes`; reloaded
+  documents map jumplist selections through history revisions.
+
 # 26.09.3 (2026-09-27)
 
 This release makes the focused file-tree row visible across the full tree

@@ -9,66 +9,77 @@
     };
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    rust-overlay,
-    ...
-  }: let
-    inherit (nixpkgs) lib;
-    eachSystem = lib.genAttrs lib.systems.flakeExposed;
-    pkgsFor = eachSystem (system:
-      import nixpkgs {
-        localSystem.system = system;
-        overlays = [(import rust-overlay) self.overlays.fefix];
+  outputs =
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+      ...
+    }:
+    let
+      inherit (nixpkgs) lib;
+      eachSystem = lib.genAttrs lib.systems.flakeExposed;
+      pkgsFor = eachSystem (
+        system:
+        import nixpkgs {
+          localSystem.system = system;
+          overlays = [
+            (import rust-overlay)
+            self.overlays.fefix
+          ];
+        }
+      );
+      gitRev = self.rev or self.dirtyRev or null;
+    in
+    {
+      packages = eachSystem (system: {
+        inherit (pkgsFor.${system}) fefix;
+        /*
+          The default fefix build. Uses the latest stable Rust toolchain, and unstable
+          nixpkgs.
+
+          The build inputs can be overridden with the following:
+
+          packages.${system}.default.override { rustPlatform = newPlatform; };
+
+          Overriding a derivation attribute can be done as well:
+
+          packages.${system}.default.overrideAttrs { buildType = "debug"; };
+        */
+        default = self.packages.${system}.fefix;
       });
-    gitRev = self.rev or self.dirtyRev or null;
-  in {
-    packages = eachSystem (system: {
-      inherit (pkgsFor.${system}) fefix;
-      /*
-      The default fefix build. Uses the latest stable Rust toolchain, and unstable
-      nixpkgs.
-
-      The build inputs can be overridden with the following:
-
-      packages.${system}.default.override { rustPlatform = newPlatform; };
-
-      Overriding a derivation attribute can be done as well:
-
-      packages.${system}.default.overrideAttrs { buildType = "debug"; };
-      */
-      default = self.packages.${system}.fefix;
-    });
-    checks =
-      lib.mapAttrs (system: pkgs: let
-        # Get fefix's MSRV toolchain to build with by default.
-        msrvToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-        msrvPlatform = pkgs.makeRustPlatform {
-          cargo = msrvToolchain;
-          rustc = msrvToolchain;
-        };
-      in {
-        fefix = self.packages.${system}.fefix.override {
-          rustPlatform = msrvPlatform;
-        };
-      })
-      pkgsFor;
-
-    # Devshell behavior is preserved.
-    devShells =
-      lib.mapAttrs (system: pkgs: {
-        default = let
-          commonRustFlagsEnv = "-C link-arg=-fuse-ld=lld -C target-cpu=native --cfg tokio_unstable";
-          platformRustFlagsEnv = lib.optionalString pkgs.stdenv.hostPlatform.isLinux "-Clink-arg=-Wl,--no-rosegment";
+      checks = lib.mapAttrs (
+        system: pkgs:
+        let
+          # Get fefix's MSRV toolchain to build with by default.
+          msrvToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+          msrvPlatform = pkgs.makeRustPlatform {
+            cargo = msrvToolchain;
+            rustc = msrvToolchain;
+          };
         in
+        {
+          fefix = self.packages.${system}.fefix.override {
+            rustPlatform = msrvPlatform;
+          };
+        }
+      ) pkgsFor;
+
+      # Devshell behavior is preserved.
+      devShells = lib.mapAttrs (system: pkgs: {
+        default =
+          let
+            commonRustFlagsEnv = "-C link-arg=-fuse-ld=lld -C target-cpu=native --cfg tokio_unstable";
+            platformRustFlagsEnv = lib.optionalString pkgs.stdenv.hostPlatform.isLinux "-Clink-arg=-Wl,--no-rosegment";
+          in
           pkgs.mkShell {
             inputsFrom = [
               (self.checks.${system}.fefix.override {
                 includeGrammarIf = _: false;
-              })
+              }).unwrapped
             ];
-            nativeBuildInputs = with pkgs;
+            nativeBuildInputs =
+              with pkgs;
               [
                 lld
                 cargo-flamegraph
@@ -82,19 +93,18 @@
               export RUSTFLAGS="''${RUSTFLAGS:-""} ${commonRustFlagsEnv} ${platformRustFlagsEnv}"
             '';
           };
-      })
-      pkgsFor;
+      }) pkgsFor;
 
-    overlays = {
-      helix = final: prev: {
-        helix = final.callPackage ./default.nix {inherit gitRev;};
+      overlays = {
+        fefix = final: prev: {
+          fefix = final.callPackage ./default.nix { inherit gitRev; };
+        };
+
+        default = self.overlays.fefix;
       };
-
-      default = self.overlays.fefix;
     };
-  };
   nixConfig = {
-    extra-substituters = ["https://helix.cachix.org"];
-    extra-trusted-public-keys = ["helix.cachix.org-1:ejp9KQpR1FBI2onstMQ34yogDm4OgU2ru6lIwPvuCVs="];
+    extra-substituters = [ "https://helix.cachix.org" ];
+    extra-trusted-public-keys = [ "helix.cachix.org-1:ejp9KQpR1FBI2onstMQ34yogDm4OgU2ru6lIwPvuCVs=" ];
   };
 }

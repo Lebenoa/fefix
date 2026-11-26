@@ -1,7 +1,7 @@
 use std::{borrow::Cow, sync::Arc};
 
 use helix_core::{
-    self as core, Transaction, chars::char_is_word, completion::CompletionProvider, movement,
+    self as core, chars::char_is_word, completion::CompletionProvider, movement,
 };
 use helix_event::TaskHandle;
 use helix_stdx::rope::RopeSliceExt as _;
@@ -9,7 +9,10 @@ use helix_view::{
     Document, Editor, ViewId, document::SavePoint, handlers::completion::ResponseContext,
 };
 
-use super::{CompletionItem, CompletionItems, CompletionResponse, Trigger, request::TriggerKind};
+use super::{
+    CompletionItem, CompletionItems, CompletionResponse, Trigger, local_completion_transaction,
+    request::TriggerKind,
+};
 
 const COMPLETION_KIND: &str = "word";
 
@@ -72,15 +75,14 @@ pub(super) fn completion(
     let future = move || {
         let text = rope.slice(..);
         let typed_word: Cow<_> = text.slice(typed_word_range).into();
+        let prefix = if edit_diff == 0 { "" } else { &typed_word };
         let items = word_index
             .matches(&typed_word)
             .into_iter()
             .filter(|word| word.as_str() != typed_word.as_ref())
             .map(|word| {
-                let transaction = Transaction::change_by_selection(&rope, &selection, |range| {
-                    let cursor = range.cursor(text);
-                    (cursor - edit_diff, cursor, Some((&word).into()))
-                });
+                let transaction =
+                    local_completion_transaction(&rope, &selection, prefix, edit_diff, &word);
                 CompletionItem::Other(core::CompletionItem {
                     transaction,
                     label: word.into(),

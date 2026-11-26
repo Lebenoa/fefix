@@ -87,15 +87,20 @@ impl Registers {
                     '*' => ClipboardType::Selection,
                     _ => unreachable!(),
                 };
+                let contents = values.join(NATIVE_LINE_ENDING.as_str());
+                // Store the contents before pushing to the clipboard so the
+                // register keeps them even if the external write fails.
+                values.reverse();
+                self.inner.insert(name, values);
+
                 // Push to the system clipboard on a background thread so a
                 // slow or hung provider (e.g. `termux-clipboard-set`) can
                 // never stall the editor event loop — mirroring how Nvim runs
                 // its clipboard provider as an async job. The local register
-                // cache below is updated synchronously; only the external push
+                // cache above is updated synchronously; only the external push
                 // is deferred. `ClipboardProvider` is `Send + 'static`, so it
                 // can cross the thread boundary.
                 let provider = self.clipboard_provider.load().clone();
-                let contents = values.join(NATIVE_LINE_ENDING.as_str());
                 std::thread::spawn(move || {
                     let kind = match clipboard_type {
                         ClipboardType::Clipboard => "system",
@@ -114,8 +119,6 @@ impl Registers {
                     };
                 });
 
-                values.reverse();
-                self.inner.insert(name, values);
                 Ok(())
             }
             _ => {
@@ -292,7 +295,10 @@ fn read_from_clipboard<'a>(
                 }
             );
 
-            RegisterValues::new(iter::empty())
+            match saved_values {
+                Some(values) => RegisterValues::new(values.iter().map(Cow::from).rev()),
+                None => RegisterValues::new(iter::empty()),
+            }
         }
     }
 }

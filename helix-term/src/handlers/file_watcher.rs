@@ -195,16 +195,11 @@ fn reload_paths(editor: &mut Editor, paths: &[PathBuf]) {
                 .copied()
                 .collect();
 
-            // sync_changes guarantees the view history matches the doc
-            // before reload appends its transaction.
             let doc = editor.documents.get_mut(&doc_id).unwrap();
             let view = editor.tree.get_mut(view_ids[0]);
             if view.doc != doc_id {
                 continue;
             }
-            view.sync_changes(doc);
-            let doc = editor.documents.get_mut(&doc_id).unwrap();
-            let view = editor.tree.get_mut(view_ids[0]);
             if let Err(error) = doc.reload(view, &editor.diff_providers, trust_full) {
                 log::warn!("file watcher: reload of {path:?} failed: {error}");
                 continue;
@@ -214,16 +209,6 @@ fn reload_paths(editor: &mut Editor, paths: &[PathBuf]) {
                 .language_servers
                 .file_event_handler
                 .file_changed(path.clone());
-
-            // Keep every other view onto this document consistent with the
-            // reloaded history (mirrors :reload-all).
-            for view_id in view_ids.iter().skip(1) {
-                let view = editor.tree.get_mut(*view_id);
-                if view.doc == doc_id {
-                    let doc = editor.documents.get_mut(&doc_id).unwrap();
-                    view.sync_changes(doc);
-                }
-            }
         }
     }
 }
