@@ -6,7 +6,7 @@ use std::{
 
 use helix_event::register_hook;
 use helix_loader::workspace_trust::TrustStatus;
-use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
+use helix_view::{DocumentId, events::DocumentDidOpen, handlers::Handlers};
 
 use crate::{compositor::Compositor, job, ui};
 

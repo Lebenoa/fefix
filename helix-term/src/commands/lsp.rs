@@ -1529,7 +1529,7 @@ fn compute_inlay_hints_for_view(
 #[cfg(test)]
 mod test {
     use super::*;
-    use helix_lsp::{util::generate_transaction_from_edits, OffsetEncoding};
+    use helix_lsp::{OffsetEncoding, util::generate_transaction_from_edits};
 
     #[test]
     fn merged_workspace_edits_apply_together() {

@@ -1,11 +1,11 @@
 use std::{borrow::Cow, cmp::min};
 
 use helix_core::doc_formatter::{DocumentFormatter, FormattedGrapheme, GraphemeSource, TextFormat};
-use helix_core::graphemes::{render_grapheme, Grapheme};
+use helix_core::graphemes::{Grapheme, render_grapheme};
 use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::{self, HighlightEvent, Highlighter, OverlayHighlights};
 use helix_core::text_annotations::TextAnnotations;
-use helix_core::{visual_offset_from_block, Position, RopeSlice};
+use helix_core::{Position, RopeSlice, visual_offset_from_block};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;

@@ -1747,13 +1747,20 @@ impl Component for FileTree {
             // Only the focused window highlights its selection; unfocused it
             // stays in the background like an inactive split.
             let style = if ctx.editor.file_tree_window.focused && row == selected_index {
-                base_style.patch(tree_selection_style).add_modifier(Modifier::BOLD)
+                base_style
+                    .patch(tree_selection_style)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 base_style
             };
             if ctx.editor.file_tree_window.focused && row == selected_index {
                 surface.clear_with(
-                    Rect { x: tree_area.x, y, width: tree_area.width, height: 1 },
+                    Rect {
+                        x: tree_area.x,
+                        y,
+                        width: tree_area.width,
+                        height: 1,
+                    },
                     style,
                 );
             }

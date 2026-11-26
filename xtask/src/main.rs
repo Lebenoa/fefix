@@ -97,12 +97,12 @@ pub mod tasks {
 
     pub fn indentcheck(languages: impl Iterator<Item = String>) -> Result<(), DynError> {
         use helix_core::{
+            Syntax,
             indent::{
-                indent_for_newline, is_opaque_interior, is_outdent_token_at,
-                treesitter_indent_for_pos, IndentStyle,
+                IndentStyle, indent_for_newline, is_opaque_interior, is_outdent_token_at,
+                treesitter_indent_for_pos,
             },
             syntax::config::IndentationHeuristic,
-            Syntax,
         };
         use helix_stdx::rope::RopeSliceExt;
         use ropey::Rope;
@@ -384,8 +384,8 @@ pub mod tasks {
     }
 
     pub fn highlightcheck(args: impl Iterator<Item = String>) -> Result<(), DynError> {
-        use helix_core::syntax::{HighlightEvent, Loader, Syntax};
         use helix_core::Language;
+        use helix_core::syntax::{HighlightEvent, Loader, Syntax};
         use ropey::Rope;
 
         // The highlighter yields a `Highlight` index into the loader's scope
@@ -548,7 +548,7 @@ pub mod tasks {
                 None => {
                     return Err(
                         format!("{}: no configured language '{lang}'", path.display()).into(),
-                    )
+                    );
                 }
             };
             let source = std::fs::read_to_string(&path)?;

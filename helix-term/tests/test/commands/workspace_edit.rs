@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use helix_lsp::{lsp, OffsetEncoding};
+use helix_lsp::{OffsetEncoding, lsp};
 use helix_term::application::Application;
 use serde_json::json;
 

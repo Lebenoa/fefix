@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use helix_core::command_line::{ExpansionKind, Token, TokenKind, Tokenizer};
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{Result, anyhow, bail, ensure};
 
 use crate::Editor;
 

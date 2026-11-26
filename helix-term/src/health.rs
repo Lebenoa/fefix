@@ -6,8 +6,8 @@ use std::{
     io::{IsTerminal, Write},
 };
 use termina::{
-    style::{ColorSpec, StyleExt as _, Stylized},
     Terminal as _,
+    style::{ColorSpec, StyleExt as _, Stylized},
 };
 
 /// An untrusted `.fefix/languages.toml` can name any grammar library, so respect trust here too.

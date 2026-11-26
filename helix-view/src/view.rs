@@ -1,19 +1,19 @@
 use crate::{
-    align_view,
+    Align, Document, DocumentId, Theme, ViewId, align_view,
     annotations::diagnostics::InlineDiagnostics,
     document::{DocumentColorSwatches, DocumentInlayHints},
     editor::{GutterConfig, GutterType},
     graphics::Rect,
     handlers::diagnostics::DiagnosticsHandler,
-    Align, Document, DocumentId, Theme, ViewId,
 };
 
 use helix_core::{
+    Position, RopeSlice, Selection,
+    VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
     char_idx_at_visual_offset,
     doc_formatter::TextFormat,
     text_annotations::TextAnnotations,
-    visual_offset_from_anchor, visual_offset_from_block, Position, RopeSlice, Selection,
-    VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
+    visual_offset_from_anchor, visual_offset_from_block,
 };
 
 use std::{collections::VecDeque, fmt};
@@ -688,7 +688,7 @@ mod tests {
 
     use super::*;
     use arc_swap::ArcSwap;
-    use helix_core::{syntax, Rope, Transaction};
+    use helix_core::{Rope, Transaction, syntax};
 
     // 1 diagnostic + 1 spacer + 3 linenr (< 1000 lines) + 1 spacer + 1 diff
     const DEFAULT_GUTTER_OFFSET: u16 = 7;

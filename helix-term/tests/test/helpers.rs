@@ -6,14 +6,13 @@ use std::{
 };
 
 use anyhow::bail;
-use helix_core::{diagnostic::Severity, test, Selection, Transaction};
+use helix_core::{Selection, Transaction, diagnostic::Severity, test};
 use helix_loader::workspace_trust::WorkspaceTrust;
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::{
-    current_ref, doc,
+    Editor, current_ref, doc,
     editor::{LspConfig, WordCompletion, WorkspaceTrustConfig},
     input::parse_macro,
-    Editor,
 };
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -403,7 +402,9 @@ impl AppBuilder {
 
     pub fn build(self) -> anyhow::Result<Application> {
         if let Some(path) = &self.args.working_directory {
-            bail!("Changing the working directory to {path:?} is not yet supported for integration tests");
+            bail!(
+                "Changing the working directory to {path:?} is not yet supported for integration tests"
+            );
         }
 
         let mut app = Application::new(

@@ -81,8 +81,8 @@ pub mod util {
     use super::*;
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
     use helix_core::snippets::{RenderedSnippet, Snippet, SnippetRenderCtx};
-    use helix_core::{chars, RopeSlice};
-    use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
+    use helix_core::{Range, Rope, Selection, Tendril, Transaction, diagnostic::NumberOrString};
+    use helix_core::{RopeSlice, chars};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -923,7 +923,9 @@ fn start_client(
             .any(|entry| globset.is_match(entry))
         {
             // TODO: also show the globset that should be matched: https://github.com/BurntSushi/ripgrep/issues/3274
-            warn!("The lsp {name:?} tried to start at {root_path:?} but failed to match it's 'required_root_patterns'");
+            warn!(
+                "The lsp {name:?} tried to start at {root_path:?} but failed to match it's 'required_root_patterns'"
+            );
             return Err(StartupError::NoRequiredRootFound);
         }
     }
@@ -1036,7 +1038,7 @@ pub fn find_lsp_workspace(
 
 #[cfg(test)]
 mod tests {
-    use super::{lsp, util::*, OffsetEncoding};
+    use super::{OffsetEncoding, lsp, util::*};
     use helix_core::Rope;
 
     #[test]

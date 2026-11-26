@@ -16,11 +16,11 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use helix_event::{register_hook, send_blocking, AsyncHook};
+use helix_event::{AsyncHook, register_hook, send_blocking};
 use helix_view::{
+    Editor,
     document::Mode,
     events::{DocumentDidClose, DocumentDidOpen},
-    Editor,
 };
 use notify::Watcher;
 use tokio::sync::mpsc::Sender;
@@ -44,7 +44,9 @@ pub enum FileWatchEvent {
 }
 
 fn fs_mtime(path: &Path) -> Option<SystemTime> {
-    std::fs::metadata(path).and_then(|meta| meta.modified()).ok()
+    std::fs::metadata(path)
+        .and_then(|meta| meta.modified())
+        .ok()
 }
 
 #[derive(Debug)]
@@ -165,14 +167,10 @@ fn reload_paths(editor: &mut Editor, paths: &[PathBuf]) {
 
         for doc_id in doc_ids {
             let has_changes = editor.documents[&doc_id].is_modified();
-            let workspace_root = editor.documents[&doc_id]
-                .workspace_root()
-                .to_path_buf();
+            let workspace_root = editor.documents[&doc_id].workspace_root().to_path_buf();
 
             if has_changes {
-                log::info!(
-                    "file watcher: {path:?} has unsaved changes, not reloading"
-                );
+                log::info!("file watcher: {path:?} has unsaved changes, not reloading");
                 continue;
             }
 

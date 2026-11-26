@@ -1,21 +1,20 @@
 use crate::{
-    jsonrpc,
+    Error, LanguageServerId, Result, jsonrpc,
     lsp::{self, notification::Notification as _},
-    Error, LanguageServerId, Result,
 };
 use anyhow::Context;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
     process::{ChildStderr, ChildStdin, ChildStdout},
     sync::{
-        mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
         Mutex, Notify,
+        mpsc::{Sender, UnboundedReceiver, UnboundedSender, unbounded_channel},
     },
 };
 

@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt};
 
-use helix_lsp::{lsp, LanguageServerId};
+use helix_lsp::{LanguageServerId, lsp};
 
 use crate::{DocumentId, Editor};
 

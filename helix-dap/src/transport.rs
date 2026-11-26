@@ -1,4 +1,4 @@
-use crate::{registry::DebugAdapterId, Error, Result};
+use crate::{Error, Result, registry::DebugAdapterId};
 use anyhow::Context;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -8,8 +8,8 @@ use std::{collections::HashMap, fmt::Debug};
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     sync::{
-        mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
         Mutex,
+        mpsc::{Sender, UnboundedReceiver, UnboundedSender, unbounded_channel},
     },
 };
 
@@ -217,7 +217,7 @@ impl Transport {
                             "Tried sending response into a closed channel (id={:?}), original request likely timed out",
                             request_seq
                         ),
-                    }
+                    },
                     // The client only handles events and reverse requests.
                     None => warn!("Response to nonexistent request #{}", res.request_seq),
                 }

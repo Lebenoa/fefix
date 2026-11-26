@@ -1,7 +1,7 @@
 //! Functions for working with [Path].
 
 pub use etcetera::home_dir;
-use regex_cursor::{engines::meta::Regex, Input};
+use regex_cursor::{Input, engines::meta::Regex};
 use ropey::RopeSlice;
 use std::sync::LazyLock;
 
@@ -9,7 +9,7 @@ use std::{
     borrow::Cow,
     ffi::OsString,
     ops::Range,
-    path::{Component, Path, PathBuf, MAIN_SEPARATOR_STR},
+    path::{Component, MAIN_SEPARATOR_STR, Path, PathBuf},
 };
 
 use crate::env::current_working_dir;

@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Weak};
 use globset::{GlobBuilder, GlobSetBuilder};
 use tokio::sync::mpsc;
 
-use crate::{lsp, Client, LanguageServerId};
+use crate::{Client, LanguageServerId, lsp};
 
 enum Event {
     FileChanged {

@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use arc_swap::ArcSwap;
 use std::io::Read;
 use std::path::Path;
@@ -10,9 +10,9 @@ use gix::dir::entry::Status;
 use gix::objs::tree::EntryKind;
 use gix::sec::trust::DefaultForLevel;
 use gix::status::{
+    UntrackedFiles,
     index_worktree::Item,
     plumbing::index_as_worktree::{Change, EntryStatus},
-    UntrackedFiles,
 };
 use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 

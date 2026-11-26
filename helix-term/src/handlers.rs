@@ -10,19 +10,19 @@ use crate::handlers::auto_save::AutoSaveHandler;
 use crate::handlers::diagnostics::PullDiagnosticsHandler;
 use crate::handlers::signature_help::SignatureHelpHandler;
 
-pub use helix_view::handlers::{word_index, Handlers};
+pub use helix_view::handlers::{Handlers, word_index};
 
 use self::document_colors::DocumentColorsHandler;
 use self::document_links::DocumentLinksHandler;
 
 mod auto_save;
 mod code_action_hint;
-mod file_watcher;
 pub mod completion;
 pub mod diagnostics;
 mod document_colors;
 mod document_highlight;
 mod document_links;
+mod file_watcher;
 mod prompt;
 mod signature_help;
 mod snippet;

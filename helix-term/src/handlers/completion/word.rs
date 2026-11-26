@@ -1,8 +1,6 @@
 use std::{borrow::Cow, sync::Arc};
 
-use helix_core::{
-    self as core, chars::char_is_word, completion::CompletionProvider, movement,
-};
+use helix_core::{self as core, chars::char_is_word, completion::CompletionProvider, movement};
 use helix_event::TaskHandle;
 use helix_stdx::rope::RopeSliceExt as _;
 use helix_view::{

@@ -216,9 +216,9 @@ fn path_kind(md: &fs::Metadata) -> &'static str {
 #[cfg(test)]
 mod tests {
     use arc_swap::ArcSwap;
-    use helix_core::{syntax, Range, Rope};
+    use helix_core::{Range, Rope, syntax};
     use helix_event::TaskController;
-    use helix_view::{editor::GutterConfig, View};
+    use helix_view::{View, editor::GutterConfig};
 
     use super::*;
 
