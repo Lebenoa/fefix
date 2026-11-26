@@ -24,12 +24,16 @@ Packaging:
 
 fefix is a fork of [Helix](https://github.com/helix-editor/helix).
 
-Merged upstream `1a3fdfda6` (82 commits since the previous sync), bringing the
-rewritten indentation engine and its `tests/indent` corpus (`cargo xtask
-indent-check`), the `:reflow` rewrite that drops `textwrap`, a large batch of
-LSP/DAP fixes, jump history stored per revision, control-character rendering,
-whole-file encoding detection that refuses lossy saves, and reworked Nix
-packaging.
+# 26.11.0 (2026-11-26)
+
+fefix is a fork of [Helix](https://github.com/helix-editor/helix).
+
+This release merges upstream `1a3fdfda6` (82 commits since the previous sync),
+bringing the rewritten indentation engine and its `tests/indent` corpus
+(`cargo xtask indent-check`), the `:reflow` rewrite that drops `textwrap`, a
+large batch of LSP/DAP fixes, jump history stored per revision,
+control-character rendering, whole-file encoding detection that refuses lossy
+saves, and reworked Nix packaging.
 
 Fixes:
 

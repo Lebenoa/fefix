@@ -1647,7 +1647,7 @@ dependencies = [
 
 [[package]]
 name = "helix-core"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1682,7 +1682,7 @@ dependencies = [
 
 [[package]]
 name = "helix-dap"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "anyhow",
  "futures-executor",
@@ -1702,7 +1702,7 @@ dependencies = [
 
 [[package]]
 name = "helix-dap-types"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1710,7 +1710,7 @@ dependencies = [
 
 [[package]]
 name = "helix-event"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "anyhow",
  "foldhash 0.2.0",
@@ -1723,7 +1723,7 @@ dependencies = [
 
 [[package]]
 name = "helix-loader"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "anyhow",
  "cc",
@@ -1742,7 +1742,7 @@ dependencies = [
 
 [[package]]
 name = "helix-lsp"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1776,11 +1776,11 @@ dependencies = [
 
 [[package]]
 name = "helix-parsec"
-version = "26.9.3"
+version = "26.11.0"
 
 [[package]]
 name = "helix-stdx"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "bitflags 2.13.1",
  "dunce",
@@ -1800,7 +1800,7 @@ dependencies = [
 
 [[package]]
 name = "helix-term"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1846,7 +1846,7 @@ dependencies = [
 
 [[package]]
 name = "helix-tui"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "arrayvec",
  "bitflags 2.13.1",
@@ -1862,7 +1862,7 @@ dependencies = [
 
 [[package]]
 name = "helix-vcs"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1878,7 +1878,7 @@ dependencies = [
 
 [[package]]
 name = "helix-view"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3424,7 +3424,7 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "xtask"
-version = "26.9.3"
+version = "26.11.0"
 dependencies = [
  "helix-core",
  "helix-loader",
