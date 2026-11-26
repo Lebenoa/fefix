@@ -1649,7 +1649,12 @@ async fn tree_picks_up_externally_created_file() -> anyhow::Result<()> {
             (
                 Some("/b<ret>"),
                 Some(&|app: &Application| {
-                    assert_eq!(doc!(app.editor).path().unwrap(), dir.path().join("b.txt"));
+                    // `Document::set_path` canonicalizes, which on macOS resolves
+                    // /var to /private/var.
+                    assert_eq!(
+                        doc!(app.editor).path().unwrap(),
+                        helix_stdx::path::canonicalize(dir.path().join("b.txt"))
+                    );
                 }),
             ),
         ],

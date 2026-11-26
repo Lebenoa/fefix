@@ -101,7 +101,7 @@
 | `file_picker_in_current_buffer_directory` | Open file picker at current buffer's directory |  |
 | `file_picker_in_current_directory` | Open file picker at current working directory | normal: `` <space>F ``, select: `` <space>F `` |
 | `file_explorer` | Open file explorer in workspace root | normal: `` <space>e ``, select: `` <space>e `` |
-| `file_explorer_in_current_buffer_directory` | Open file explorer at current buffer's directory | normal: `` <space>. ``, select: `` <space>. `` |
+| `file_explorer_in_current_buffer_directory` | Open file explorer at current buffer's directory | normal: `` <space>. ``, `` <space>E ``, select: `` <space>. ``, `` <space>E `` |
 | `file_explorer_in_current_directory` | Open file explorer at current working directory |  |
 | `file_tree` | Toggle file tree in workspace root |  |
 | `file_tree_in_current_buffer_directory` | Open file tree at current buffer's directory |  |
