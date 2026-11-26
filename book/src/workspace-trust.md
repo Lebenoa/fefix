@@ -72,8 +72,8 @@ hash = sha256:abc123...
 excluded = false
 ```
 
-- Linux, macOS: `~/.local/share/helix/workspace_trust/`
-- Windows: `%AppData%\Roaming\fefix\workspace_trust\`
+- Linux, macOS: `~/.local/share/fefix/workspace_trust/`
+- Windows: `%AppData%\fefix\workspace_trust\`
 
 The one-file-per-workspace shape is safe under multiple concurrent fefix
 instances — different workspaces never write the same file.

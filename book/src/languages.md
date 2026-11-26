@@ -16,7 +16,7 @@ There are three possible locations for a `languages.toml` file:
    auto-formatting for Rust:
 
    ```toml
-   # in <config_dir>/helix/languages.toml
+   # in <config_dir>/fefix/languages.toml
 
    [language-server.mylang-lsp]
    command = "mylang-lsp"
@@ -28,7 +28,7 @@ There are three possible locations for a `languages.toml` file:
 
 3. In a `.fefix` folder in your project. Language configuration may also be
    overridden local to a project by creating a `languages.toml` file in a
-   `.helix` folder. Its settings will be merged with the language configuration
+   `.fefix` folder. Its settings will be merged with the language configuration
    in the configuration directory and the built-in configuration.
 
 ## Language configuration

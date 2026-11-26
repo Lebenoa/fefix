@@ -594,7 +594,7 @@ prompt = false
 
 # "none":     prompt for every workspace.
 # "servers":  trust LSP and DAP launches but still gate local config and git;
-#             .helix/config.toml, .helix/languages.toml, etc. need :workspace-trust.
+#             .fefix/config.toml, .fefix/languages.toml, etc. need :workspace-trust.
 # "insecure": trust everything (discouraged).
 level = "servers"
 
