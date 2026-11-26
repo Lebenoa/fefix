@@ -5,6 +5,7 @@ on:
     branches:
       - master
   merge_group:
+  workflow_dispatch:
   schedule:
     - cron: "00 01 * * *"
 
