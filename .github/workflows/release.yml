@@ -97,6 +97,11 @@ jobs:
 
       - name: Download grammars
         uses: actions/download-artifact@v8
+        with:
+          # Only the grammars artifact: without a name the action puts every
+          # (already uploaded) bins-* artifact in its own directory, so
+          # grammars.tar.xz lands in grammars/ on a rerun or slow job.
+          name: grammars
 
       - name: Move grammars under runtime
         if: "!startsWith(matrix.os, 'windows')"
