@@ -97,7 +97,7 @@ fn test_normalize_path() -> Result<(), Box<dyn Error>> {
         path::normalize(&path),
         expected,
         "input {:?} and \"..\" should not erase the symlink that goes ahead",
-        &path
+        path
     );
 
     // root/link/.././../dir2/../
@@ -114,7 +114,7 @@ fn test_normalize_path() -> Result<(), Box<dyn Error>> {
         .unwrap()
         .join(Component::ParentDir)
         .join(Component::ParentDir);
-    assert_eq!(path::normalize(&path), expected, "input {:?}", &path);
+    assert_eq!(path::normalize(&path), expected, "input {:?}", path);
 
     Ok(())
 }

@@ -272,7 +272,7 @@ impl Default for FileExplorerConfig {
 /// terminal. `Auto` (the default) uses Nerd Font icons when the terminal is
 /// likely to support them, detected from its environment; `Ascii` and
 /// `NerdFont` override the detection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum IconMode {
     /// Use ASCII expand/collapse arrows (`▸`/`▾`) instead of Nerd Font icons.
     #[serde(rename = "ascii")]
@@ -283,13 +283,8 @@ pub enum IconMode {
     NerdFont,
     /// Use Nerd Font icons when the terminal is likely to support them.
     #[serde(rename = "auto")]
+    #[default]
     Auto,
-}
-
-impl Default for IconMode {
-    fn default() -> Self {
-        Self::Auto
-    }
 }
 
 impl IconMode {
@@ -323,16 +318,16 @@ fn nerd_font_supported() -> bool {
         "contour",
         "rio",
     ];
-    if let Ok(program) = std::env::var("TERM_PROGRAM") {
-        if TERM_PROGRAMS.contains(&program.as_str()) {
-            return true;
-        }
+    if let Ok(program) = std::env::var("TERM_PROGRAM")
+        && TERM_PROGRAMS.contains(&program.as_str())
+    {
+        return true;
     }
     // kitty, foot and ghostty advertise themselves through `TERM`.
-    if let Ok(term) = std::env::var("TERM") {
-        if term.contains("kitty") || term.contains("foot") || term.contains("ghostty") {
-            return true;
-        }
+    if let Ok(term) = std::env::var("TERM")
+        && (term.contains("kitty") || term.contains("foot") || term.contains("ghostty"))
+    {
+        return true;
     }
     // Alacritty sets no `TERM_PROGRAM`; its window ID variable is unambiguous.
     if std::env::var_os("ALACRITTY_WINDOW_ID").is_some() {
@@ -1897,10 +1892,10 @@ impl Editor {
             }
         }
 
-        if let Some(dir) = path.parent() {
-            if !dir.is_dir() {
-                fs::create_dir_all(dir)?;
-            }
+        if let Some(dir) = path.parent()
+            && !dir.is_dir()
+        {
+            fs::create_dir_all(dir)?;
         }
         if is_dir {
             fs::create_dir(&path)?;
@@ -2966,6 +2961,6 @@ mod tests {
                 .map(String::as_str),
             Some("*")
         );
-        assert!(section.file_tree.folder_icons.get("assets").is_none());
+        assert!(!section.file_tree.folder_icons.contains_key("assets"));
     }
 }

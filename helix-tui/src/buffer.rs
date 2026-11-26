@@ -361,8 +361,8 @@ impl Buffer {
             self.content[index].set_symbol(s);
             self.content[index].set_style(style);
             // Reset following cells if multi-width (they would be hidden by the grapheme),
-            for i in index + 1..index + grapheme_width {
-                self.content[i].reset();
+            for cell in &mut self.content[index + 1..index + grapheme_width] {
+                cell.reset();
             }
             index += grapheme_width;
             x_offset += grapheme_width;
@@ -386,8 +386,8 @@ impl Buffer {
         cell.set_style(style);
         // Reset following cells if the grapheme spans multiple columns; they
         // would be hidden by the grapheme but must not carry stale content.
-        for i in index + 1..index + width {
-            self.content[i].reset();
+        for cell in &mut self.content[index + 1..index + width] {
+            cell.reset();
         }
     }
 
@@ -400,12 +400,11 @@ impl Buffer {
     /// and that the whole run fits inside the buffer area.
     #[inline]
     pub fn set_tab(&mut self, x: u16, y: u16, tab: &str, style: Style) {
-        let mut index = self.index_of(x, y);
-        for (i, ch) in tab.char_indices() {
+        let start = self.index_of(x, y);
+        for (index, (i, ch)) in (start..).zip(tab.char_indices()) {
             let cell = &mut self.content[index];
             cell.set_symbol_with_width(&tab[i..i + ch.len_utf8()], 1);
             cell.set_style(style);
-            index += 1;
         }
     }
 
@@ -454,8 +453,8 @@ impl Buffer {
             self.content[index].set_style(style(byte_offset));
 
             // Reset following cells if multi-width (they would be hidden by the grapheme):
-            for i in index + 1..index + grapheme_width {
-                self.content[i].reset();
+            for cell in &mut self.content[index + 1..index + grapheme_width] {
+                cell.reset();
             }
 
             index += grapheme_width;
@@ -512,8 +511,8 @@ impl Buffer {
                 self.content[index].set_symbol(s);
                 self.content[index].set_style(style(byte_offset));
                 // Reset following cells if multi-width (they would be hidden by the grapheme),
-                for i in index + 1..index + width {
-                    self.content[i].reset();
+                for cell in &mut self.content[index + 1..index + width] {
+                    cell.reset();
                 }
                 index += width;
                 x_offset += width;
@@ -545,8 +544,8 @@ impl Buffer {
                 }
                 self.content[start].set_symbol(s);
                 self.content[start].set_style(style(byte_offset));
-                for i in start + 1..index {
-                    self.content[i].reset();
+                for cell in &mut self.content[start + 1..index] {
+                    cell.reset();
                 }
                 index -= width;
                 x_offset += width;
@@ -588,8 +587,8 @@ impl Buffer {
                 }
                 self.content[start].set_symbol(s);
                 self.content[start].set_style(span.style);
-                for i in start + 1..index {
-                    self.content[i].reset();
+                for cell in &mut self.content[start + 1..index] {
+                    cell.reset();
                 }
                 index -= width;
                 x_offset += width;

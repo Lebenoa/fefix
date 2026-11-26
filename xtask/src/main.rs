@@ -456,10 +456,10 @@ pub mod tasks {
             loop {
                 let off = hl.next_event_offset();
                 let cur = if off == u32::MAX { len } else { off };
-                if cur > start {
-                    if let Some(idx) = active.last() {
-                        out.push((start as usize, cur as usize, scopes[*idx as usize].clone()));
-                    }
+                if cur > start
+                    && let Some(idx) = active.last()
+                {
+                    out.push((start as usize, cur as usize, scopes[*idx as usize].clone()));
                 }
                 if off == u32::MAX {
                     break;

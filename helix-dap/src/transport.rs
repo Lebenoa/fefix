@@ -139,7 +139,7 @@ impl Transport {
         err: &mut (impl AsyncBufRead + Unpin + Send),
         buffer: &mut String,
     ) -> Result<()> {
-        buffer.truncate(0);
+        buffer.clear();
         if err.read_line(buffer).await? == 0 {
             return Err(Error::StreamClosed);
         };
@@ -153,10 +153,10 @@ impl Transport {
         server_stdin: &mut Box<dyn AsyncWrite + Unpin + Send>,
         mut payload: Payload,
     ) -> Result<()> {
-        if let Payload::Request(request) = &mut payload {
-            if let Some(back) = request.back_ch.take() {
-                self.pending_requests.lock().await.insert(request.seq, back);
-            }
+        if let Payload::Request(request) = &mut payload
+            && let Some(back) = request.back_ch.take()
+        {
+            self.pending_requests.lock().await.insert(request.seq, back);
         }
         let json = serde_json::to_string(&payload)?;
         self.send_string_to_server(server_stdin, json).await

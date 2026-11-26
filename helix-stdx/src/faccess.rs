@@ -278,16 +278,16 @@ mod imp {
             }
 
             // If it doesn't have the correct extension it isn't executable
-            if mode & FILE_GENERIC_EXECUTE == FILE_GENERIC_EXECUTE {
-                if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
-                    match ext {
-                        "exe" | "com" | "bat" | "cmd" => (),
-                        _ => {
-                            return Err(io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                "File not executable",
-                            ));
-                        }
+            if mode & FILE_GENERIC_EXECUTE == FILE_GENERIC_EXECUTE
+                && let Some(ext) = p.extension().and_then(|s| s.to_str())
+            {
+                match ext {
+                    "exe" | "com" | "bat" | "cmd" => (),
+                    _ => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "File not executable",
+                        ));
                     }
                 }
             }

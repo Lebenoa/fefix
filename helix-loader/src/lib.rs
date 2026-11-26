@@ -86,10 +86,9 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
         if let Some(dir) = exe_path
             .parent()
             .and_then(|dir| ancestor_runtime_dir(dir, RT_DIR))
+            && !workspace_rt_dirs.contains(&dir)
         {
-            if !workspace_rt_dirs.contains(&dir) {
-                workspace_rt_dirs.push(dir);
-            }
+            workspace_rt_dirs.push(dir);
         }
         // `cargo install --path .` installs into `<cargo-home>/bin`; look for a
         // runtime directory beside the cargo home (e.g. `~/.cargo/runtime`).
@@ -98,18 +97,16 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
             .and_then(Path::parent)
             .map(|cargo_home| cargo_home.join(RT_DIR))
             .filter(|dir| dir.is_dir())
+            && !workspace_rt_dirs.contains(&dir)
         {
-            if !workspace_rt_dirs.contains(&dir) {
-                workspace_rt_dirs.push(dir);
-            }
+            workspace_rt_dirs.push(dir);
         }
     }
-    if let Ok(cwd) = std::env::current_dir() {
-        if let Some(dir) = ancestor_runtime_dir(&cwd, RT_DIR) {
-            if !workspace_rt_dirs.contains(&dir) {
-                workspace_rt_dirs.push(dir);
-            }
-        }
+    if let Ok(cwd) = std::env::current_dir()
+        && let Some(dir) = ancestor_runtime_dir(&cwd, RT_DIR)
+        && !workspace_rt_dirs.contains(&dir)
+    {
+        workspace_rt_dirs.push(dir);
     }
     for rt_dir in workspace_rt_dirs {
         log::debug!("runtime dir: {}", rt_dir.to_string_lossy());
@@ -337,10 +334,10 @@ fn default_config_file() -> PathBuf {
 }
 
 fn ensure_parent_dir(path: &Path) {
-    if let Some(parent) = path.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent).ok();
-        }
+    if let Some(parent) = path.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent).ok();
     }
 }
 

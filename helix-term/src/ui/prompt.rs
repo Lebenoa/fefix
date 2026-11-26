@@ -691,12 +691,11 @@ impl Component for Prompt {
                     } else {
                         if last_item != self.line {
                             // store in history
-                            if let Some(register) = self.history_register {
-                                if let Err(err) =
+                            if let Some(register) = self.history_register
+                                && let Err(err) =
                                     cx.editor.registers.push(register, self.line.clone())
-                                {
-                                    cx.editor.set_error(err.to_string());
-                                }
+                            {
+                                cx.editor.set_error(err.to_string());
                             };
                         }
 
@@ -736,7 +735,7 @@ impl Component for Prompt {
                     .editor
                     .registers
                     .iter_preview()
-                    .map(|(ch, preview)| (0.., format!("{} {}", ch, &preview).into()))
+                    .map(|(ch, preview)| (0.., format!("{} {}", ch, preview).into()))
                     .collect();
                 self.next_char_handler = Some(Box::new(|prompt, c, context| {
                     prompt.insert_str(

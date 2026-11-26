@@ -101,6 +101,13 @@ macro_rules! lsp_enum {
             }
         }
 
+        impl std::str::FromStr for $typ {
+            type Err = &'static str;
+            fn from_str(value: &str) -> Result<Self, Self::Err> {
+                <Self as std::convert::TryFrom<&str>>::try_from(value)
+            }
+        }
+
     }
 }
 

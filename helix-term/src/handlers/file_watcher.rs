@@ -82,20 +82,20 @@ impl FileWatcher {
 
     fn track(&mut self, path: &Path) {
         let canonical = helix_stdx::path::canonicalize(path);
-        if self.watched.insert(canonical.clone()) {
-            if let Some(dir) = canonical.parent().map(Path::to_path_buf) {
-                let _ = self.cmd_tx.send(WatchCmd::Watch(dir));
-            }
+        if self.watched.insert(canonical.clone())
+            && let Some(dir) = canonical.parent().map(Path::to_path_buf)
+        {
+            let _ = self.cmd_tx.send(WatchCmd::Watch(dir));
         }
     }
 
     fn untrack(&mut self, path: &Path) {
         let canonical = helix_stdx::path::canonicalize(path);
         self.reloaded.remove(&canonical);
-        if self.watched.remove(&canonical) {
-            if let Some(dir) = canonical.parent().map(Path::to_path_buf) {
-                let _ = self.cmd_tx.send(WatchCmd::Unwatch(dir));
-            }
+        if self.watched.remove(&canonical)
+            && let Some(dir) = canonical.parent().map(Path::to_path_buf)
+        {
+            let _ = self.cmd_tx.send(WatchCmd::Unwatch(dir));
         }
     }
 }

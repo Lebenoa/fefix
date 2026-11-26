@@ -915,19 +915,18 @@ fn start_client(
     let root_path = root.clone().unwrap_or_else(|| workspace.clone());
     let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
 
-    if let Some(globset) = &ls_config.required_root_patterns {
-        if !root_path
+    if let Some(globset) = &ls_config.required_root_patterns
+        && !root_path
             .read_dir()?
             .flatten()
             .map(|entry| entry.file_name())
             .any(|entry| globset.is_match(entry))
-        {
-            // TODO: also show the globset that should be matched: https://github.com/BurntSushi/ripgrep/issues/3274
-            warn!(
-                "The lsp {name:?} tried to start at {root_path:?} but failed to match it's 'required_root_patterns'"
-            );
-            return Err(StartupError::NoRequiredRootFound);
-        }
+    {
+        // TODO: also show the globset that should be matched: https://github.com/BurntSushi/ripgrep/issues/3274
+        warn!(
+            "The lsp {name:?} tried to start at {root_path:?} but failed to match it's 'required_root_patterns'"
+        );
+        return Err(StartupError::NoRequiredRootFound);
     }
 
     let (client, incoming, initialize_notify) = Client::start(

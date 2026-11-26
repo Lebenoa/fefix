@@ -132,12 +132,10 @@ impl EditorView {
             .language_config()
             .and_then(|config| config.rainbow_brackets)
             .unwrap_or(config.rainbow_brackets)
-        {
-            if let Some(overlay) =
+            && let Some(overlay) =
                 Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
-            {
-                overlays.push(overlay);
-            }
+        {
+            overlays.push(overlay);
         }
 
         if let Some(overlay) = Self::doc_document_link_highlights(doc, theme) {
@@ -147,10 +145,10 @@ impl EditorView {
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
 
         if is_focused {
-            if config.lsp.auto_document_highlight {
-                if let Some(overlay) = Self::doc_document_highlights(doc, view, theme) {
-                    overlays.push(overlay);
-                }
+            if config.lsp.auto_document_highlight
+                && let Some(overlay) = Self::doc_document_highlights(doc, view, theme)
+            {
+                overlays.push(overlay);
             }
             if let Some(tabstops) = Self::tabstop_highlights(doc, theme) {
                 overlays.push(tabstops);
@@ -986,10 +984,10 @@ impl EditorView {
         if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
             match keyresult {
                 KeymapResult::NotFound => {
-                    if !self.on_next_key(OnKeyCallbackKind::Fallback, cx, event) {
-                        if let Some(ch) = event.char() {
-                            commands::insert::insert_char(cx, ch)
-                        }
+                    if !self.on_next_key(OnKeyCallbackKind::Fallback, cx, event)
+                        && let Some(ch) = event.char()
+                    {
+                        commands::insert::insert_char(cx, ch)
                     }
                 }
                 KeymapResult::Cancelled(pending) => {
@@ -1524,17 +1522,17 @@ impl Component for EditorView {
                                     }
                                 };
 
-                                if let Some(callback) = res {
-                                    if callback.is_some() {
-                                        // assume close_fn
-                                        if let Some(cb) = self.clear_completion(cx.editor) {
-                                            if consumed {
-                                                cx.on_next_key_callback =
-                                                    Some((cb, OnKeyCallbackKind::Fallback))
-                                            } else {
-                                                self.on_next_key =
-                                                    Some((cb, OnKeyCallbackKind::Fallback));
-                                            }
+                                if let Some(callback) = res
+                                    && callback.is_some()
+                                {
+                                    // assume close_fn
+                                    if let Some(cb) = self.clear_completion(cx.editor) {
+                                        if consumed {
+                                            cx.on_next_key_callback =
+                                                Some((cb, OnKeyCallbackKind::Fallback))
+                                        } else {
+                                            self.on_next_key =
+                                                Some((cb, OnKeyCallbackKind::Fallback));
                                         }
                                     }
                                 }
@@ -1661,11 +1659,11 @@ impl Component for EditorView {
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
-        if config.auto_info {
-            if let Some(mut info) = cx.editor.autoinfo.take() {
-                info.render(viewport, surface, cx);
-                cx.editor.autoinfo = Some(info)
-            }
+        if config.auto_info
+            && let Some(mut info) = cx.editor.autoinfo.take()
+        {
+            info.render(viewport, surface, cx);
+            cx.editor.autoinfo = Some(info)
         }
 
         let key_width = 15u16; // for showing pending keys

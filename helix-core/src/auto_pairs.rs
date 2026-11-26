@@ -150,10 +150,11 @@ pub fn hook_delete(doc: &Rope, range: &Range, pairs: &AutoPairs) -> Option<(Dele
         let second_next = doc.get_char(graphemes::next_grapheme_boundary(text, cursor))?;
         log::debug!("second_prev: {}, second_next: {}", second_prev, second_next);
 
-        if let Some(pair) = pairs.get(second_prev) {
-            if pair.open == second_prev && pair.close == second_next {
-                return handle_delete(doc, range);
-            }
+        if let Some(pair) = pairs.get(second_prev)
+            && pair.open == second_prev
+            && pair.close == second_next
+        {
+            return handle_delete(doc, range);
         }
     }
 
@@ -365,7 +366,7 @@ fn handle_insert_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
     let next_range = get_next_range(doc, range, len_inserted);
     let result = (change, next_range);
 
-    log::debug!("auto pair change: {:#?}", &result);
+    log::debug!("auto pair change: {:#?}", result);
 
     Some(result)
 }
@@ -384,7 +385,7 @@ fn handle_insert_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change
     let next_range = get_next_range(doc, range, 0);
     let result = (change, next_range);
 
-    log::debug!("auto pair change: {:#?}", &result);
+    log::debug!("auto pair change: {:#?}", result);
 
     Some(result)
 }
@@ -411,7 +412,7 @@ fn handle_insert_same(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
     let next_range = get_next_range(doc, range, len_inserted);
     let result = (change, next_range);
 
-    log::debug!("auto pair change: {:#?}", &result);
+    log::debug!("auto pair change: {:#?}", result);
 
     Some(result)
 }

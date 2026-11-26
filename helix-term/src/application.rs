@@ -1190,15 +1190,13 @@ impl Application {
                                     };
                                     if let Some(language_server) =
                                         editor.language_server_by_id(server_id)
-                                    {
-                                        if let Err(err) =
+                                        && let Err(err) =
                                             language_server.reply(id.clone(), Ok(json!(reply)))
-                                        {
-                                            log::error!(
-                                                "Failed to send reply to server '{}' request {id}: {err}",
-                                                language_server.name()
-                                            );
-                                        }
+                                    {
+                                        log::error!(
+                                            "Failed to send reply to server '{}' request {id}: {err}",
+                                            language_server.name()
+                                        );
                                     }
                                 },
                             );

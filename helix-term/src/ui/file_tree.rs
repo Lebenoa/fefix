@@ -266,10 +266,10 @@ impl Tree {
     /// collapsed, the ancestors are expanded first (used when restoring
     /// expansion state from a previous session).
     fn expand(&mut self, path: &Path) {
-        if Self::find_mut(&mut self.entries, path).is_none() {
-            if let Some(parent) = self.parent(path) {
-                self.expand(&parent);
-            }
+        if Self::find_mut(&mut self.entries, path).is_none()
+            && let Some(parent) = self.parent(path)
+        {
+            self.expand(&parent);
         }
         if let Some(entry) = Self::find_mut(&mut self.entries, path) {
             if !entry.is_dir {
@@ -311,12 +311,12 @@ impl Tree {
     /// Reload the children of the selected directory, or of the root if the
     /// selection is a file.
     fn refresh(&mut self, path: &Path) {
-        if let Some(entry) = Self::find_mut(&mut self.entries, path) {
-            if entry.is_dir {
-                entry.children = read_children(path, &self.config);
-                entry.loaded = true;
-                return;
-            }
+        if let Some(entry) = Self::find_mut(&mut self.entries, path)
+            && entry.is_dir
+        {
+            entry.children = read_children(path, &self.config);
+            entry.loaded = true;
+            return;
         }
         if let Some(root_entry) = self.entries.first_mut() {
             root_entry.children = read_children(&self.root, &self.config);
@@ -1088,14 +1088,14 @@ impl FileTree {
         let (moved_count, errors) = self.tree.move_paths(&paths, &dest);
         self.moving = false;
         self.move_input.clear();
-        if moved_count > 0 {
-            if let Some(last) = paths.last() {
-                let mut moved_path = last.clone();
-                if let Some(name) = moved_path.file_name() {
-                    moved_path = dest.join(name);
-                }
-                self.tree.select(&moved_path);
+        if moved_count > 0
+            && let Some(last) = paths.last()
+        {
+            let mut moved_path = last.clone();
+            if let Some(name) = moved_path.file_name() {
+                moved_path = dest.join(name);
             }
+            self.tree.select(&moved_path);
         }
         if errors.is_empty() {
             ctx.editor
@@ -1308,7 +1308,7 @@ fn symbol_for<'a>(
             if let Some(icon) = folder_icons.get(entry.name()) {
                 return icon;
             }
-            folder_icon(entry.name()).unwrap_or_else(|| {
+            folder_icon(entry.name()).unwrap_or({
                 if entry.expanded {
                     ICON_FOLDER_OPEN
                 } else {
@@ -1804,7 +1804,7 @@ fn keymap_info() -> Info {
         ("C-w l", "focus the editor"),
         ("?", "show this help"),
     ];
-    Info::new("File tree", &BINDINGS)
+    Info::new("File tree", BINDINGS)
 }
 
 #[cfg(test)]
@@ -2274,14 +2274,14 @@ mod tests {
         let tmp = TempDir::new("move-dir");
         let dest = tmp.path().join("sub");
         let dir = tmp.path().join("dir");
-        fs::create_dir_all(&dir.join("nested")).unwrap();
+        fs::create_dir_all(dir.join("nested")).unwrap();
         write_file(&dir.join("nested").join("x.rs"));
         fs::create_dir(&dest).unwrap();
         let mut tree = Tree::new(tmp.path().to_path_buf(), permissive_config());
         tree.reveal(&dir.join("nested").join("x.rs"));
         tree.select(&dir);
         tree.toggle_mark();
-        let (moved, errors) = tree.move_paths(&[dir.clone()], &dest);
+        let (moved, errors) = tree.move_paths(std::slice::from_ref(&dir), &dest);
         assert_eq!(moved, 1);
         assert!(errors.is_empty(), "{errors:?}");
         assert!(!dir.exists());
@@ -2305,7 +2305,7 @@ mod tests {
         assert_eq!(moved, 0);
         assert_eq!(errors.len(), 1);
         // Cannot move a directory into its own descendant.
-        let (moved, errors) = tree.move_paths(&[dest.clone()], &dest.join("inner"));
+        let (moved, errors) = tree.move_paths(std::slice::from_ref(&dest), &dest.join("inner"));
         assert_eq!(moved, 0);
         assert_eq!(errors.len(), 1);
     }

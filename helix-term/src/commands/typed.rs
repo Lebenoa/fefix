@@ -433,10 +433,10 @@ fn write_impl(
                     );
                     Job::with_callback(call).wait_before_exiting()
                 });
-            if fmt_job.is_none() {
-                if let Err(err) = editor.save(doc_id, path, force) {
-                    editor.set_error(format!("Error saving: {}", err));
-                }
+            if fmt_job.is_none()
+                && let Err(err) = editor.save(doc_id, path, force)
+            {
+                editor.set_error(format!("Error saving: {}", err));
             }
             fmt_job
         }));
@@ -928,10 +928,10 @@ pub fn write_all_impl(
                         );
                         Job::with_callback(call).wait_before_exiting()
                     });
-                if fmt_job.is_none() {
-                    if let Err(err) = editor.save::<PathBuf>(doc_id, None, force) {
-                        editor.set_error(format!("Error saving: {}", err));
-                    }
+                if fmt_job.is_none()
+                    && let Err(err) = editor.save::<PathBuf>(doc_id, None, force)
+                {
+                    editor.set_error(format!("Error saving: {}", err));
                 }
                 fmt_job
             }));
@@ -1109,13 +1109,13 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
             if args.is_empty() {
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview()?;
-            } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
-                    if !(true_color || theme.is_16_color()) {
-                        bail!("Unsupported theme: theme requires true color support");
-                    }
-                    cx.editor.set_theme_preview(theme)?;
-                };
+            } else if let Some(theme_name) = args.first()
+                && let Ok(theme) = cx.editor.theme_loader.load(theme_name)
+            {
+                if !(true_color || theme.is_16_color()) {
+                    bail!("Unsupported theme: theme requires true color support");
+                }
+                cx.editor.set_theme_preview(theme)?;
             };
         }
         PromptEvent::Validate => {
@@ -2855,17 +2855,14 @@ fn move_buffer_impl(
         .map(|old_file_name| new_path.join(old_file_name))
         .unwrap_or(new_path);
 
-    if old_path.exists() {
-        if let Some(parent) = new_path.parent() {
-            if !parent.exists() {
-                if options.force {
-                    std::fs::DirBuilder::new().recursive(true).create(parent)?;
-                } else {
-                    bail!(
-                        "can't move file, parent directory does not exist (use :mv! to create it)"
-                    )
-                }
-            }
+    if old_path.exists()
+        && let Some(parent) = new_path.parent()
+        && !parent.exists()
+    {
+        if options.force {
+            std::fs::DirBuilder::new().recursive(true).create(parent)?;
+        } else {
+            bail!("can't move file, parent directory does not exist (use :mv! to create it)")
         }
     }
 

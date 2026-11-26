@@ -106,7 +106,7 @@ impl Registers {
                         ClipboardType::Clipboard => "system",
                         ClipboardType::Selection => "primary",
                     };
-                    let _ = match provider.set_contents(&contents, clipboard_type) {
+                    match provider.set_contents(&contents, clipboard_type) {
                         Ok(()) => helix_event::status::report_blocking(
                             helix_event::status::StatusMessage {
                                 severity: helix_event::status::Severity::Info,
@@ -163,7 +163,7 @@ impl Registers {
                         ClipboardType::Clipboard => "system",
                         ClipboardType::Selection => "primary",
                     };
-                    let _ = match provider.set_contents(&value, clipboard_type) {
+                    match provider.set_contents(&value, clipboard_type) {
                         Ok(()) => helix_event::status::report_blocking(
                             helix_event::status::StatusMessage {
                                 severity: helix_event::status::Severity::Info,
