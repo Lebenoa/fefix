@@ -1649,11 +1649,13 @@ async fn tree_picks_up_externally_created_file() -> anyhow::Result<()> {
             (
                 Some("/b<ret>"),
                 Some(&|app: &Application| {
-                    // `Document::set_path` canonicalizes, which on macOS resolves
-                    // /var to /private/var.
+                    // Whether the tree's root keeps a symlinked prefix (`/var` vs
+                    // `/private/var` on macOS) depends on how it was opened, so
+                    // compare the real paths of the two existing files instead.
+                    let opened = doc!(app.editor).path().unwrap();
                     assert_eq!(
-                        doc!(app.editor).path().unwrap(),
-                        helix_stdx::path::canonicalize(dir.path().join("b.txt"))
+                        std::fs::canonicalize(opened).unwrap(),
+                        std::fs::canonicalize(dir.path().join("b.txt")).unwrap()
                     );
                 }),
             ),
